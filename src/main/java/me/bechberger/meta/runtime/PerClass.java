@@ -7,12 +7,9 @@ import java.util.List;
 /** Class that holds the diffs for a single class */
 public class PerClass {
 
-  private final Class<?> clazz;
-
   private final List<BytecodeDiff> diffs = Collections.synchronizedList(new ArrayList<>());
 
-  public PerClass(Class<?> clazz) {
-    this.clazz = clazz;
+  public PerClass() {
   }
 
   void addDiff(Instrumentator instrumentator, Class<?> clazz, byte[] old, byte[] current) {

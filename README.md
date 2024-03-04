@@ -1,8 +1,13 @@
 Meta-Agent
 ==========
-Check how agent transformed bytecode per class.
 
-Just build the project with `mvn package -DskipTests` and run your Java program with the agent:
+Who instruments the instrumenter? This project is a Java agent that instruments Java agents,
+or specifically, it instruments the ClassFileTransformers of other agents to observe how they transform
+the bytecode of classes.
+
+This is especially useful to check what libraries like [Mockito](https://site.mockito.org/) do to your classes at runtime.
+
+To run it, build the project with `mvn package -DskipTests` and run your Java program with the agent:
 
 ```shell
 java -javaagent:target/meta.jar -jar your-program.jar
@@ -12,11 +17,63 @@ mvn package -DskipTests
 mvn test -DargLine="-javaagent:target/meta-agent.jar"
 ```
 
-Then open your browser at `http://localhost:7071` (or your port) and
-you will see a list of available commands.
+The executed [MockitoTest](src/test/java/me/bechberger/meta/MockitoTest.java) looks as follows:
 
-Currently available commands are:
-- `/` or `/help`
+```java
+@ExtendWith(MockitoExtension.class)
+public class MockitoTest {
+
+  @Mock
+  List<String> mockedList;
+
+  @Test
+  public void whenNotUseMockAnnotation_thenCorrect() throws InterruptedException {
+    mockedList.add("one");
+    Mockito.verify(mockedList).add("one");
+    assertEquals(0, mockedList.size());
+
+    Mockito.when(mockedList.size()).thenReturn(100);
+    assertEquals(100, mockedList.size());
+
+    Thread.sleep(10000000L);
+  }
+}
+```
+
+Opening [localhost](http://localhost:7071) will show you a list of available commands, most importantly
+- [/help](http://localhost:7071) to show the help
+- [/instrumentators](http://localhost:7071/instrumentators) to list all instrumentators (ClassFileTransformers) that have been used
+- [/full-diff/instrumentator/.*](http://localhost:7071/full-diff/instrumentator/.*)
+  to show the full diff for all instrumentators
+- [/classes](http://localhost:7071/classes) to list all classes that have been transformed
+- [/full-diff/class/.*](http://localhost:7071/full-diff/class/.*)
+  to show the full diff for all classes and all instrumentators
+- [/all/decompile/<pattern>](http://localhost:7071/all/decompile/<pattern>)
+  to decompile the classes matching the pattern
+
+In our example, we can see via [/instrumentators](http://localhost:7071/instrumentators) that Mockito uses
+the `org.mockito.internal.creation.bytebuddy.InlineByteBuddyMockMaker` to transform classes.
+Using [/full-diff/instrumentator/.*](http://localhost:7071/full-diff/instrumentator/.*), we can see the diff of all
+transformations that this instrumentator has done:
+
+![Screenshot of http://localhost:7071/full-diff/instrumentator/.*](img/instrumentators.png)
+
+Yet we also see via [/classes](http://localhost:7071/classes) that Mockito only transforms the `java.util.List` 
+interface and all its parents:
+
+![Screenshot of http://localhost:7071/classes](img/classes.png)
+
+How this works
+--------------
+
+The agent wraps all ClassFileTransformers with a custom transformer that records the diff of the bytecode.
+It then uses [vineflower](http://vineflower.org/) to decompile the bytecode and 
+[diff](https://www.gnu.org/software/diffutils/)
+to compute the diff between the original and the transformed bytecode.
+
+The front-end is implemented using [Javalin](https://javalin.io/) as a simple web server started by the agent.
+
+This is essentially a more capable version of the [classviewer-agent](https://github.com/parttimenerd/classviewer-agent).-
 
 Contributions
 -------------

@@ -24,7 +24,7 @@ public class InstrumentationHandler {
       return;
     }
     diffs.computeIfAbsent(instrumentator, PerInstrumentator::new).addDiff(clazz, old, current);
-    classDiffs.computeIfAbsent(clazz, PerClass::new).addDiff(instrumentator, clazz, old, current);
+    classDiffs.computeIfAbsent(clazz, c -> new PerClass()).addDiff(instrumentator, clazz, old, current);
   }
 
   public static Map<Instrumentator, PerInstrumentator> getDiffs() {

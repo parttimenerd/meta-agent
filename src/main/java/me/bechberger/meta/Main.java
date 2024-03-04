@@ -20,10 +20,7 @@ import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import me.bechberger.meta.runtime.InstrumentationHandler;
-
-import javax.swing.text.html.HTML;
 
 /** Agent entry */
 public class Main {
@@ -67,12 +64,10 @@ public class Main {
     triggerRetransformOfAllClasses(inst);
     // start server
     int port = parsePortFromArgs(agentArgs);
-    //System.setProperty(org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "ERROR");
+    // System.setProperty(org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "ERROR");
     Thread thread =
         new Thread(
-            () -> {
-              runServer(port);
-            });
+            () -> runServer(port));
     thread.setDaemon(true);
     thread.start();
   }
@@ -98,25 +93,74 @@ public class Main {
     }
   }
 
-  private static final List<Command> commands = List.of(
+  private static final List<Command> commands =
+      List.of(
           new Command(List.of("/", "/help"), Main::help, "Show this help", "/help"),
-          new Command("/instrumentators", Main::listInstrumentators, "List all instrumentators", "/instrumentators"),
-          new Command("/instrumentators/{pattern}", Main::listInstrumentators, "List instrumentators matching the given glob pattern", "/instrumentators/org.mockito.*"),
-          new Command("/diff/instrumentator/{pattern}", Main::showInstrumentatorDiffs, "Show diffs for instrumentator matching the given glob pattern", "/diff/instrumentator/org.mockito.*"),
-          new Command("/full-diff/instrumentator/{pattern}", Main::showInstrumentatorDiffs, "Show diffs with all context for instrumentator matching the given glob pattern", "/full-diff/instrumentator/org.mockito.*"),
+          new Command(
+              "/instrumentators",
+              Main::listInstrumentators,
+              "List all instrumentators",
+              "/instrumentators"),
+          new Command(
+              "/instrumentators/{pattern}",
+              Main::listInstrumentators,
+              "List instrumentators matching the given glob pattern",
+              "/instrumentators/org.mockito.*"),
+          new Command(
+              "/diff/instrumentator/{pattern}",
+              Main::showInstrumentatorDiffs,
+              "Show diffs for instrumentator matching the given glob pattern",
+              "/diff/instrumentator/org.mockito.*"),
+          new Command(
+              "/full-diff/instrumentator/{pattern}",
+              Main::showInstrumentatorDiffs,
+              "Show diffs with all context for instrumentator matching the given glob pattern",
+              "/full-diff/instrumentator/org.mockito.*"),
           new Command("/classes", Main::listClasses, "List all classes", "/classes"),
-          new Command("/classes/{pattern}", Main::listClasses, "List transformed classes matching the given glob pattern", "/classes/java.util.*"),
+          new Command(
+              "/classes/{pattern}",
+              Main::listClasses,
+              "List transformed classes matching the given glob pattern",
+              "/classes/java.util.*"),
           new Command("/all/classes", Main::listClasses, "List all classes", "/all/classes"),
-          new Command("/all/classes/{pattern}", Main::listClasses, "List all classes matching the given glob pattern", "/all/classes/java.util.*"),
-          new Command("/diff/class/{pattern}", Main::showClassDiffs, "Show diffs for transformed classes matching the given glob pattern", "/diff/class/java.util.*"),
-          new Command("/full-diff/class/{pattern}", Main::showClassDiffs, "Show diffs with all context for transformed classes matching the given glob pattern", "/full-diff/class/java.util.*"),
-          new Command("/diff/class-instr/{pattern}/{instr}", Main::showClassDiffs, "Show diffs for transformed class matching the given class and instrumentator", "/diff/class-instr/java.util.List/org.mockito.*"),
-          new Command("/full-diff/class-instr/{pattern}/{instr}", Main::showClassDiffs, "Show diffs with all context for transformed class matching the given glob pattern and instrumentator", "/full-diff/class-instr/java.util.List/org.mockito.*"),
-          new Command("/decompile/{pattern}", Main::decompileClasses, "Decompile all transformed classes matching the given glob pattern", "/decompile/java.util.*"),
-          new Command("/all/decompile/{pattern}", Main::decompileClasses, "Decompile all classes matching the given glob pattern", "/all/decompile/java.util.stream.*")
-  );
+          new Command(
+              "/all/classes/{pattern}",
+              Main::listClasses,
+              "List all classes matching the given glob pattern",
+              "/all/classes/java.util.*"),
+          new Command(
+              "/diff/class/{pattern}",
+              Main::showClassDiffs,
+              "Show diffs for transformed classes matching the given glob pattern",
+              "/diff/class/java.util.*"),
+          new Command(
+              "/full-diff/class/{pattern}",
+              Main::showClassDiffs,
+              "Show diffs with all context for transformed classes matching the given glob pattern",
+              "/full-diff/class/java.util.*"),
+          new Command(
+              "/diff/class-instr/{pattern}/{instr}",
+              Main::showClassDiffs,
+              "Show diffs for transformed class matching the given class and instrumentator",
+              "/diff/class-instr/java.util.List/org.mockito.*"),
+          new Command(
+              "/full-diff/class-instr/{pattern}/{instr}",
+              Main::showClassDiffs,
+              "Show diffs with all context for transformed class matching the given glob pattern and instrumentator",
+              "/full-diff/class-instr/java.util.List/org.mockito.*"),
+          new Command(
+              "/decompile/{pattern}",
+              Main::decompileClasses,
+              "Decompile all transformed classes matching the given glob pattern",
+              "/decompile/java.util.*"),
+          new Command(
+              "/all/decompile/{pattern}",
+              Main::decompileClasses,
+              "Decompile all classes matching the given glob pattern",
+              "/all/decompile/java.util.stream.*"));
 
-  private static final String HTML_HEADER = """
+  private static final String HTML_HEADER =
+      """
  <!DOCTYPE html>
          <head>
             <meta charset="utf-8" />
@@ -142,7 +186,8 @@ public class Main {
           """;
 
   private static final String DECOMPILED_HTML_HEADER =
-          HTML_HEADER + """
+      HTML_HEADER
+          + """
          <em>Decompiled bytecode using <a href="https://vineflower.org/">vineflower</a>, obtained
           when ever this page is loaded.</em>
           """;
@@ -161,11 +206,23 @@ public class Main {
 
   private static void help(io.javalin.http.Context ctx) {
     ctx.contentType("text/html");
-    ctx.result(HTML_HEADER + "<h1>Commands of Meta-Agent</h1><ul>"
-            + commands.stream().map(c -> {
-              Function<String, String> formatPath = p -> "<a href='" + p + "'>" + p + "</a>";
-              return "<li>" + c.path.stream().map(formatPath).collect(Collectors.joining(",")) + ": " + c.description + " <ul><li>Example: " + formatPath.apply(c.example) + "</li></ul></li>";
-    }).collect(Collectors.joining())
+    ctx.result(
+        HTML_HEADER
+            + "<h1>Commands of Meta-Agent</h1><ul>"
+            + commands.stream()
+                .map(
+                    c -> {
+                      Function<String, String> formatPath =
+                          p -> "<a href='" + p + "'>" + p + "</a>";
+                      return "<li>"
+                          + c.path.stream().map(formatPath).collect(Collectors.joining(","))
+                          + ": "
+                          + c.description
+                          + " <ul><li>Example: "
+                          + formatPath.apply(c.example)
+                          + "</li></ul></li>";
+                    })
+                .collect(Collectors.joining())
             + "</ul></body>");
   }
 
@@ -216,14 +273,22 @@ public class Main {
     var pattern = getMatchPattern(ctx);
     Predicate<Class> classPredicate = c -> pattern.matcher(c.getName()).matches();
     Comparator<Class> classComparator = Comparator.comparing(Class::getName);
-    var instrumented = InstrumentationHandler.getClassDiffs().keySet().stream()
-        .filter(classPredicate).sorted(classComparator)
-        .toList();
+    var instrumented =
+        InstrumentationHandler.getClassDiffs().keySet().stream()
+            .filter(classPredicate)
+            .sorted(classComparator)
+            .toList();
     if (!all) {
       return instrumented;
     }
-    return (List<Class<?>>)(Object)Stream.concat(instrumented.stream(),
-            Arrays.stream(inst.getAllLoadedClasses()).filter(classPredicate).sorted(classComparator)).toList();
+    return (List<Class<?>>)
+        (Object)
+            Stream.concat(
+                    instrumented.stream(),
+                    Arrays.stream(inst.getAllLoadedClasses())
+                        .filter(classPredicate)
+                        .sorted(classComparator))
+                .toList();
   }
 
   private static void listClasses(Context ctx) {
@@ -234,13 +299,21 @@ public class Main {
                 clazz -> {
                   boolean instrumented = InstrumentationHandler.isInstrumented(clazz);
                   if (instrumented) {
-                    return "<li><a href='/full-diff/class/" + clazz.getName() + "'>" + clazz.getName() + "</a></li>";
+                    return "<li><a href='/full-diff/class/"
+                        + clazz.getName()
+                        + "'>"
+                        + clazz.getName()
+                        + "</a></li>";
                   } else {
                     if (clazz.getName().startsWith("[")) {
                       return "";
                     }
                     if (inst.isModifiableClass(clazz)) {
-                      return "<li><a href='/all/decompile/" + clazz.getName() + "'>" + clazz.getName() + " (only decompile)</a></li>";
+                      return "<li><a href='/all/decompile/"
+                          + clazz.getName()
+                          + "'>"
+                          + clazz.getName()
+                          + " (only decompile)</a></li>";
                     }
                     return "<li>" + clazz.getName() + "</li>";
                   }
@@ -263,12 +336,19 @@ public class Main {
     List<Class<?>> classes = getClasses(ctx);
     StringBuilder sb = new StringBuilder();
     sb.append(DECOMPILED_HTML_HEADER);
-    Map<Class<?>, byte[]> bytecodes = classes.stream().filter(inst::isModifiableClass).distinct().collect(Collectors.toMap(c -> c, c -> {
-      if (InstrumentationHandler.isInstrumented(c)) {
-        return InstrumentationHandler.getCurrentBytecode(c);
-      }
-      return getBytecodeOfUnmodified(c);
-    }));
+    Map<Class<?>, byte[]> bytecodes =
+        classes.stream()
+            .filter(inst::isModifiableClass)
+            .distinct()
+            .collect(
+                Collectors.toMap(
+                    c -> c,
+                    c -> {
+                      if (InstrumentationHandler.isInstrumented(c)) {
+                        return InstrumentationHandler.getCurrentBytecode(c);
+                      }
+                      return getBytecodeOfUnmodified(c);
+                    }));
     System.out.println("Decompiling " + bytecodes.size() + " classes");
     Map<Class<?>, String> decompiledClasses = BytecodeDiffUtils.decompileClasses(bytecodes);
     for (Class<?> c : classes) {
@@ -278,7 +358,9 @@ public class Main {
       }
       sb.append("<h1>").append(c.getName()).append("</h1>");
       if (InstrumentationHandler.isInstrumented(c)) {
-        sb.append("<p>Instrumented: <a href='LINK'>LINK</a></p>".replace("LINK", "/full-diff/class/" + c.getName()));
+        sb.append(
+            "<p>Instrumented: <a href='LINK'>LINK</a></p>"
+                .replace("LINK", "/full-diff/class/" + c.getName()));
       }
       sb.append("<pre><code class='language-java'>");
       sb.append(makeCodeHtmlFriendly(code));
@@ -302,21 +384,34 @@ public class Main {
       var diffs = InstrumentationHandler.getInstrumentatorDiffs(instrumentator);
       sb.append("<h1>").append(instrumentator).append("</h1>");
 
-      List<Class<?>> classesWithMultipleDiffs = diffs.getDiffs().entrySet().stream().filter(e -> e.getValue().size() > 1).map(Entry::getKey).collect(Collectors.toList());
-      if (classesWithMultipleDiffs.size() > 0) {
+      List<Class<?>> classesWithMultipleDiffs =
+          diffs.getDiffs().entrySet().stream()
+              .filter(e -> e.getValue().size() > 1)
+              .map(Entry::getKey)
+              .collect(Collectors.toList());
+      if (!classesWithMultipleDiffs.isEmpty()) {
         sb.append("Classes with multiple diffs");
         sb.append("<ul>");
         for (var clazz : classesWithMultipleDiffs) {
-          sb.append("<li><a href='/diff/class/").append(clazz.getName()).append("'>").append(clazz.getName()).append("</a></li>");
+          sb.append("<li><a href='/diff/class/")
+              .append(clazz.getName())
+              .append("'>")
+              .append(clazz.getName())
+              .append("</a></li>");
         }
         sb.append("</ul>");
         sb.append("Only showing the first diff for each class");
       }
 
-      Map<Class<?>, BytecodeDiff> firstDiffs = diffs.getDiffs().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> {
-        var val = e.getValue().get(0);
-        return new BytecodeDiff(val.old(), val.current());
-      }));
+      Map<Class<?>, BytecodeDiff> firstDiffs =
+          diffs.getDiffs().entrySet().stream()
+              .collect(
+                  Collectors.toMap(
+                      Map.Entry::getKey,
+                      e -> {
+                        var val = e.getValue().get(0);
+                        return new BytecodeDiff(val.old(), val.current());
+                      }));
 
       sb.append(formatDiff(BytecodeDiffUtils.diff(firstDiffs, fullDiff), true));
     }
@@ -328,7 +423,10 @@ public class Main {
     ctx.contentType("text/html");
     StringBuilder sb = new StringBuilder();
     boolean fullDiff = ctx.path().contains("full-diff/");
-    Pattern instrPattern = ctx.pathParamMap().containsKey("instr") ? getMatchPattern(ctx.pathParam("instr")) : Pattern.compile(".*");
+    Pattern instrPattern =
+        ctx.pathParamMap().containsKey("instr")
+            ? getMatchPattern(ctx.pathParam("instr"))
+            : Pattern.compile(".*");
     sb.append(DECOMPILED_HTML_HEADER);
     for (Class<?> clazz : getClasses(ctx)) {
       sb.append("<h1>").append(clazz.getName()).append("</h1>");
@@ -339,14 +437,16 @@ public class Main {
         sb.append("<h2>").append(diff.instrumentator().name()).append("</h2>");
         sb.append(
             formatDiff(
-                BytecodeDiffUtils.diff(Map.of(clazz, new BytecodeDiff(diff.old(), diff.current())), fullDiff), false));
+                BytecodeDiffUtils.diff(
+                    Map.of(clazz, new BytecodeDiff(diff.old(), diff.current())), fullDiff),
+                false));
       }
     }
     sb.append("</body>");
     ctx.result(sb.toString());
   }
 
-  private static AtomicLong diffIdCounter = new AtomicLong(0);
+  private static final AtomicLong diffIdCounter = new AtomicLong(0);
 
   private static String formatDiff(String diff, boolean drawFileList) {
     long id = diffIdCounter.getAndIncrement();
@@ -386,7 +486,9 @@ public class Main {
     </script>
     <div id="show-ID"></div>
     """
-        .replace("DIFF", makeCodeHtmlFriendly(diff)).replace("ID", Long.toString(id)).replace("DRAW_FILE_LIST", Boolean.toString(drawFileList));
+        .replace("DIFF", makeCodeHtmlFriendly(diff))
+        .replace("ID", Long.toString(id))
+        .replace("DRAW_FILE_LIST", Boolean.toString(drawFileList));
   }
 
   private static Path getExtractedJARPath() throws IOException {
@@ -403,15 +505,21 @@ public class Main {
 
   private static byte[] getBytecodeOfUnmodified(Class clazz) {
     byte[][] bytes = {null};
-    var transformer = new ClassFileTransformer() {
-      @Override
-      public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, java.security.ProtectionDomain protectionDomain, byte[] classfileBuffer) {
-        if (classBeingRedefined.equals(clazz)) {
-          bytes[0] = classfileBuffer;
-        }
-        return classfileBuffer;
-      }
-    };
+    var transformer =
+        new ClassFileTransformer() {
+          @Override
+          public byte[] transform(
+              ClassLoader loader,
+              String className,
+              Class<?> classBeingRedefined,
+              java.security.ProtectionDomain protectionDomain,
+              byte[] classfileBuffer) {
+            if (classBeingRedefined.equals(clazz)) {
+              bytes[0] = classfileBuffer;
+            }
+            return classfileBuffer;
+          }
+        };
     inst.addTransformer(transformer, true);
     try {
       inst.retransformClasses(clazz);

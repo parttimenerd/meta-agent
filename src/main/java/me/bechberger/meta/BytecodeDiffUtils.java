@@ -1,20 +1,15 @@
 package me.bechberger.meta;
 
-import org.jetbrains.annotations.Nullable;
-import org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler;
 
-/**
- * Utility class for computing bytecode diffs using the decompiled source code and gnu-diff
- */
+/** Utility class for computing bytecode diffs using the decompiled source code and gnu-diff */
 public class BytecodeDiffUtils {
 
   private static void deleteFolder(@Nullable Path folder) {
@@ -28,8 +23,14 @@ public class BytecodeDiffUtils {
   }
 
   static String diff(Map<Class<?>, BytecodeDiff> diffPerClass, boolean showAll) {
-    var oldSourcePerClass = decompileClasses(diffPerClass.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().old())));
-    var newSourcePerClass = decompileClasses(diffPerClass.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().current())));
+    var oldSourcePerClass =
+        decompileClasses(
+            diffPerClass.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().old())));
+    var newSourcePerClass =
+        decompileClasses(
+            diffPerClass.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().current())));
     Path tmp = null;
     try {
       tmp = Files.createTempDirectory("bytecode-diff");
@@ -56,17 +57,27 @@ public class BytecodeDiffUtils {
       Process p = new ProcessBuilder(args).directory(tmp.toFile()).start();
       // capture the output of the process and return it
       String out = new String(p.getInputStream().readAllBytes());
-      // remove all time stamps from the output that come after the file names, but keep the file names
-      return out.lines().map(l -> (l.startsWith("---") || l.startsWith("+++")) ? l.replaceAll("((---|\\+\\+\\+) .*)(\\t\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})", "$1") : l).collect(Collectors.joining("\n"));
+      // remove all time stamps from the output that come after the file names, but keep the file
+      // names
+      return out.lines()
+          .map(
+              l ->
+                  (l.startsWith("---") || l.startsWith("+++"))
+                      ? l.replaceAll(
+                          "((---|\\+\\+\\+) .*)(\\t\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})",
+                          "$1")
+                      : l)
+          .collect(Collectors.joining("\n"));
     } catch (IOException e) {
       return "Error: " + e.getMessage();
-    } finally{
+    } finally {
       deleteFolder(tmp);
     }
   }
 
   static Map<Class<?>, String> decompileClasses(Map<Class<?>, byte[]> bytecodePerClass) {
-    Map<String, List<Class<?>>> classesPerSimpleName = bytecodePerClass.keySet().stream().collect(Collectors.groupingBy(Class::getSimpleName));
+    Map<String, List<Class<?>>> classesPerSimpleName =
+        bytecodePerClass.keySet().stream().collect(Collectors.groupingBy(Class::getSimpleName));
     int maxIndex = classesPerSimpleName.values().stream().mapToInt(List::size).max().orElse(0);
     Set<String> toProcess = new HashSet<>(classesPerSimpleName.keySet());
     Map<Class<?>, String> result = new HashMap<>();
@@ -88,15 +99,17 @@ public class BytecodeDiffUtils {
     return result;
   }
 
-  private static Map<Class<?>, String> decompileClassesWithoutClassNameDuplicates(Map<Class<?>, byte[]> bytecodePerClass) {
+  private static Map<Class<?>, String> decompileClassesWithoutClassNameDuplicates(
+      Map<Class<?>, byte[]> bytecodePerClass) {
     var oldOut = System.out;
     Path tmpDir = null;
     try {
-      System.setOut(new java.io.PrintStream(new java.io.OutputStream() {
-        @Override
-        public void write(int b) {
-        }
-      }));
+      System.setOut(
+          new java.io.PrintStream(
+              new java.io.OutputStream() {
+                @Override
+                public void write(int b) {}
+              }));
       tmpDir = Files.createTempDirectory("classviewer");
       Map<Class<?>, String> result = new HashMap<>();
       List<Path> classPaths = new ArrayList<>();
