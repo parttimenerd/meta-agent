@@ -20,6 +20,8 @@ import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import me.bechberger.meta.BytecodeDiffUtils.DiffSourceMode;
 import me.bechberger.meta.runtime.InstrumentationHandler;
 
 /** Agent entry */
@@ -192,6 +194,8 @@ public class Main {
           when ever this page is loaded.</em>
           """;
 
+  private static final String DECOMPILED_JAVAP_HEADER = HTML_HEADER + "<em>Decompiled bytecode using javap</em>";
+
   private static void runServer(int port) {
     System.out.println("Starting Javalin on port " + port);
     JavalinLogger.startupInfo = false;
@@ -331,11 +335,16 @@ public class Main {
                     """);
   }
 
+  private static String getDecompiledHtmlHeader(DiffSourceMode mode) {
+    return mode == DiffSourceMode.JAVA ? DECOMPILED_HTML_HEADER : DECOMPILED_JAVAP_HEADER;
+  }
+
   private static void decompileClasses(Context ctx) {
     ctx.contentType("text/html");
     List<Class<?>> classes = getClasses(ctx);
     StringBuilder sb = new StringBuilder();
-    sb.append(DECOMPILED_HTML_HEADER);
+    DiffSourceMode mode = getMode(ctx);
+    sb.append(getDecompiledHtmlHeader(mode));
     Map<Class<?>, byte[]> bytecodes =
         classes.stream()
             .filter(inst::isModifiableClass)
@@ -350,7 +359,7 @@ public class Main {
                       return getBytecodeOfUnmodified(c);
                     }));
     System.out.println("Decompiling " + bytecodes.size() + " classes");
-    Map<Class<?>, String> decompiledClasses = BytecodeDiffUtils.decompileClasses(bytecodes);
+    Map<Class<?>, String> decompiledClasses = BytecodeDiffUtils.decompileClasses(bytecodes, mode);
     for (Class<?> c : classes) {
       String code = decompiledClasses.get(c);
       if (code == null) {
@@ -375,11 +384,25 @@ public class Main {
     return code.replace("<", "&lt;").replace(">", "&gt;");
   }
 
+  private static DiffSourceMode getMode(Context ctx) {
+    String modeParam = ctx.queryParam("mode");
+    if (modeParam == null) {
+      return DiffSourceMode.JAVA;
+    }
+    return switch (modeParam) {
+      case "java" -> DiffSourceMode.JAVA;
+      case "javap" -> DiffSourceMode.VERBOSE_BYTECODE;
+      case "javap-verbose" -> DiffSourceMode.ULTRA_VERBOSE_BYTECODE;
+      default -> throw new IllegalArgumentException("Invalid mode: " + modeParam);
+    };
+  }
+
   private static void showInstrumentatorDiffs(Context ctx) {
     ctx.contentType("text/html");
     StringBuilder sb = new StringBuilder();
     boolean fullDiff = ctx.path().contains("full-diff/");
-    sb.append(DECOMPILED_HTML_HEADER);
+    DiffSourceMode mode = getMode(ctx);
+    sb.append(getDecompiledHtmlHeader(mode));
     for (String instrumentator : getInstrumentatorNames(ctx)) {
       var diffs = InstrumentationHandler.getInstrumentatorDiffs(instrumentator);
       sb.append("<h1>").append(instrumentator).append("</h1>");
@@ -413,7 +436,7 @@ public class Main {
                         return new BytecodeDiff(val.old(), val.current());
                       }));
 
-      sb.append(formatDiff(BytecodeDiffUtils.diff(firstDiffs, fullDiff), true));
+      sb.append(formatDiff(BytecodeDiffUtils.diff(firstDiffs, mode, fullDiff), true));
     }
     sb.append("</body>");
     ctx.result(sb.toString());
@@ -423,11 +446,12 @@ public class Main {
     ctx.contentType("text/html");
     StringBuilder sb = new StringBuilder();
     boolean fullDiff = ctx.path().contains("full-diff/");
+    DiffSourceMode mode = getMode(ctx);
     Pattern instrPattern =
         ctx.pathParamMap().containsKey("instr")
             ? getMatchPattern(ctx.pathParam("instr"))
             : Pattern.compile(".*");
-    sb.append(DECOMPILED_HTML_HEADER);
+    sb.append(getDecompiledHtmlHeader(mode));
     for (Class<?> clazz : getClasses(ctx)) {
       sb.append("<h1>").append(clazz.getName()).append("</h1>");
       for (var diff : InstrumentationHandler.getClassDiffs().get(clazz).getDiffs()) {
@@ -438,7 +462,7 @@ public class Main {
         sb.append(
             formatDiff(
                 BytecodeDiffUtils.diff(
-                    Map.of(clazz, new BytecodeDiff(diff.old(), diff.current())), fullDiff),
+                    Map.of(clazz, new BytecodeDiff(diff.old(), diff.current())), mode, fullDiff),
                 false));
       }
     }
