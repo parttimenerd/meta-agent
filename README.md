@@ -41,14 +41,14 @@ public class MockitoTest {
 ```
 
 Opening [localhost](http://localhost:7071) will show you a list of available commands, most importantly
-- [/help](http://localhost:7071) to show the help
+- [/help](http://localhost:7071) to show the help, available comands and decompilation and output options
 - [/instrumentators](http://localhost:7071/instrumentators) to list all instrumentators (ClassFileTransformers) that have been used
-- [/full-diff/instrumentator/.*](http://localhost:7071/full-diff/instrumentator/.*)
+- [/full-diff/instrumentator?pattern=.*](http://localhost:7071/full-diff/instrumentator?pattern=.*)
   to show the full diff for all instrumentators
 - [/classes](http://localhost:7071/classes) to list all classes that have been transformed
-- [/full-diff/class/.*](http://localhost:7071/full-diff/class/.*)
+- [/full-diff/class?pattern=.*](http://localhost:7071/full-diff/class?pattern=.*)
   to show the full diff for all classes and all instrumentators
-- [/all/decompile/<pattern>](http://localhost:7071/all/decompile/<pattern>)
+- [/all/decompile?pattern=<pattern>](http://localhost:7071/all/decompile?pattern=<pattern>)
   to decompile the classes matching the pattern
 
 In our example, we can see via [/instrumentators](http://localhost:7071/instrumentators) that Mockito uses
@@ -71,7 +71,7 @@ It then uses [vineflower](http://vineflower.org/) to decompile the bytecode and
 [diff](https://www.gnu.org/software/diffutils/)
 to compute the diff between the original and the transformed bytecode.
 
-The front-end is implemented using [Javalin](https://javalin.io/) as a simple web server started by the agent.
+The front-end is implemented using the built-in HttpServer as a simple web server started by the agent.
 
 This is essentially a more capable version of the [classviewer-agent](https://github.com/parttimenerd/classviewer-agent).-
 

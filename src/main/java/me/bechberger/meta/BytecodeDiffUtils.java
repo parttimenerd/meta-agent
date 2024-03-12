@@ -24,14 +24,24 @@ public class BytecodeDiffUtils {
   }
 
   enum DiffSourceMode {
-    JAVA(".java", "java"),
-    VERBOSE_BYTECODE(".bytecode", "javap"),
-    ULTRA_VERBOSE_BYTECODE(".bytecode", "javap-verbose");
+    JAVA(".java", "java", """
+         <em>Decompiled bytecode using <a href="https://vineflower.org/">vineflower</a>, obtained
+          when ever this page is loaded. Might contain errors, please check with <code>?mode=javap</code> too.</em>""", "java"),
+    VERBOSE_BYTECODE(".bytecode", "javap", """
+<em>Decompiled bytecode using <code>javap</code></em>""", "javap"),
+    ULTRA_VERBOSE_BYTECODE(".bytecode", "javap-verbose", """
+<em>Decompiled bytecode using <code>javap -v</code></em>
+""", "javap-verbose");
     final String suffix;
     final String name;
-    DiffSourceMode(String suffix, String name) {
+    final String htmlHeader;
+    final String param;
+
+    DiffSourceMode(String suffix, String name, String htmlHeader, String param) {
       this.suffix = suffix;
       this.name = name;
+      this.htmlHeader = htmlHeader;
+      this.param = param;
     }
   }
 
@@ -199,8 +209,8 @@ public class BytecodeDiffUtils {
         if (line.startsWith("Warning: File ")) {
           continue;
         }
-        if (line.startsWith("Compiled from ")) {
-          line = lines.next();
+        if (line.trim().startsWith("Compiled from ")) {
+          line = lines.next().trim();
           var matcher = Pattern.compile("(^|.* )(class|interface|enum|record) ([^ <]*).*").matcher(line);
           var className = "";
           if (matcher.find()) {
@@ -213,8 +223,8 @@ public class BytecodeDiffUtils {
           classOutput.append(line).append("\n");
           while (lines.hasNext()) {
             line = lines.next();
-            if (line.startsWith("Compiled from ")) {
-              lastLine = line;
+            if (line.trim().startsWith("Compiled from ")) {
+              lastLine = line.trim();
               break;
             }
             classOutput.append(line).append("\n");

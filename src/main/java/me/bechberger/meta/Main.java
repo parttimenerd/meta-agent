@@ -1,13 +1,13 @@
 package me.bechberger.meta;
 
-import io.javalin.Javalin;
-import io.javalin.http.Context;
-import io.javalin.http.Handler;
-import io.javalin.util.JavalinLogger;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
 import java.io.*;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.lang.instrument.UnmodifiableClassException;
+import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -66,7 +66,6 @@ public class Main {
     triggerRetransformOfAllClasses(inst);
     // start server
     int port = parsePortFromArgs(agentArgs);
-    // System.setProperty(org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "ERROR");
     Thread thread =
         new Thread(
             () -> runServer(port));
@@ -89,8 +88,10 @@ public class Main {
     }
   }
 
-  private record Command(List<String> path, Handler handler, String description, String example) {
-    Command(String path, Handler handler, String description, String example) {
+  private record Response(String response, boolean html) {}
+
+  private record Command(List<String> path, Function<HttpExchange, Response> handler, String description, String example) {
+    Command(String path, Function<HttpExchange, Response> handler, String description, String example) {
       this(List.of(path), handler, description, example);
     }
   }
@@ -104,62 +105,62 @@ public class Main {
               "List all instrumentators",
               "/instrumentators"),
           new Command(
-              "/instrumentators/{pattern}",
+              "/instrumentators?pattern={pattern}",
               Main::listInstrumentators,
               "List instrumentators matching the given glob pattern",
-              "/instrumentators/org.mockito.*"),
+              "/instrumentators?pattern=org.mockito.*"),
           new Command(
-              "/diff/instrumentator/{pattern}",
+              "/diff/instrumentator?pattern={pattern}",
               Main::showInstrumentatorDiffs,
               "Show diffs for instrumentator matching the given glob pattern",
-              "/diff/instrumentator/org.mockito.*"),
+              "/diff/instrumentator?pattern=org.mockito.*"),
           new Command(
-              "/full-diff/instrumentator/{pattern}",
+              "/full-diff/instrumentator?pattern={pattern}",
               Main::showInstrumentatorDiffs,
               "Show diffs with all context for instrumentator matching the given glob pattern",
-              "/full-diff/instrumentator/org.mockito.*"),
+              "/full-diff/instrumentator?pattern=org.mockito.*"),
           new Command("/classes", Main::listClasses, "List all classes", "/classes"),
           new Command(
-              "/classes/{pattern}",
+              "/classes?pattern={pattern}",
               Main::listClasses,
               "List transformed classes matching the given glob pattern",
-              "/classes/java.util.*"),
+              "/classes?pattern=java.util.*"),
           new Command("/all/classes", Main::listClasses, "List all classes", "/all/classes"),
           new Command(
-              "/all/classes/{pattern}",
+              "/all/classes?pattern={pattern}",
               Main::listClasses,
               "List all classes matching the given glob pattern",
-              "/all/classes/java.util.*"),
+              "/all/classes?pattern=java.util.*"),
           new Command(
-              "/diff/class/{pattern}",
+              "/diff/class?pattern={pattern}",
               Main::showClassDiffs,
               "Show diffs for transformed classes matching the given glob pattern",
-              "/diff/class/java.util.*"),
+              "/diff/class?pattern=java.util.*"),
           new Command(
-              "/full-diff/class/{pattern}",
+              "/full-diff/class?pattern={pattern}",
               Main::showClassDiffs,
               "Show diffs with all context for transformed classes matching the given glob pattern",
-              "/full-diff/class/java.util.*"),
+              "/full-diff/class?pattern=java.util.*"),
           new Command(
-              "/diff/class-instr/{pattern}/{instr}",
+              "/diff/class-instr?pattern={pattern}&instr={instr}",
               Main::showClassDiffs,
               "Show diffs for transformed class matching the given class and instrumentator",
-              "/diff/class-instr/java.util.List/org.mockito.*"),
+              "/diff/class-instr?pattern=java.util.List&instr=org.mockito.*"),
           new Command(
-              "/full-diff/class-instr/{pattern}/{instr}",
+              "/full-diff/class-instr?pattern={pattern}&instr={instr}",
               Main::showClassDiffs,
               "Show diffs with all context for transformed class matching the given glob pattern and instrumentator",
-              "/full-diff/class-instr/java.util.List/org.mockito.*"),
+              "/full-diff/class-instr?pattern=java.util.List&instr=org.mockito.*"),
           new Command(
-              "/decompile/{pattern}",
+              "/decompile?pattern={pattern}",
               Main::decompileClasses,
               "Decompile all transformed classes matching the given glob pattern",
-              "/decompile/java.util.*"),
+              "/decompile?pattern=java.util.*"),
           new Command(
-              "/all/decompile/{pattern}",
+              "/all/decompile?pattern={pattern}",
               Main::decompileClasses,
               "Decompile all classes matching the given glob pattern",
-              "/all/decompile/java.util.stream.*"));
+              "/all/decompile?pattern=java.util.stream.*"));
 
   private static final String HTML_HEADER =
       """
@@ -187,47 +188,109 @@ public class Main {
           <body>
           """;
 
-  private static final String DECOMPILED_HTML_HEADER =
-      HTML_HEADER
-          + """
-         <em>Decompiled bytecode using <a href="https://vineflower.org/">vineflower</a>, obtained
-          when ever this page is loaded.</em>
-          """;
-
-  private static final String DECOMPILED_JAVAP_HEADER = HTML_HEADER + "<em>Decompiled bytecode using javap</em>";
-
   private static void runServer(int port) {
-    System.out.println("Starting Javalin on port " + port);
-    JavalinLogger.startupInfo = false;
-    var app = Javalin.create();
-    for (var command : commands) {
-      for (var path : command.path) {
-        app.get(path, command.handler);
+    try {
+      HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+      System.out.println("Server started at localhost:" + port);
+      Set<String> paths = new HashSet<>();
+      for (var command : commands) {
+        for (var path : command.path) {
+          String actualPath = path.split("\\?")[0];
+          if (paths.contains(actualPath)) {
+            continue;
+          }
+          paths.add(actualPath);
+          server.createContext(actualPath, new MyHandler(command.handler));
+        }
       }
+      server.setExecutor(null); // creates a default executor
+      server.start();
+    } catch (IOException e) {
+      e.printStackTrace();
     }
-    app.start(port);
   }
 
-  private static void help(io.javalin.http.Context ctx) {
-    ctx.contentType("text/html");
-    ctx.result(
-        HTML_HEADER
-            + "<h1>Commands of Meta-Agent</h1><ul>"
+  static class MyHandler implements HttpHandler {
+    private final Function<HttpExchange, Response> handler;
+
+    MyHandler(Function<HttpExchange, Response> handler) {
+      this.handler = handler;
+    }
+
+    @Override
+    public void handle(HttpExchange t) throws IOException {
+      Response response;
+      try {
+        response = this.handler.apply(t);
+      } catch (Throwable e) {
+        e.printStackTrace();
+        t.getResponseHeaders().add("Content-Type", "text/plain");
+        t.sendResponseHeaders(500, 0);
+        OutputStream os = t.getResponseBody();
+        os.write(e.getMessage().getBytes());
+        os.close();
+        return;
+      }
+      if (response.html) {
+        t.getResponseHeaders().add("Content-Type", "text/html");
+      } else {
+        t.getResponseHeaders().add("Content-Type", "text/plain");
+      }
+      t.sendResponseHeaders(200, response.response.length());
+      OutputStream os = t.getResponseBody();
+      os.write(response.response.getBytes());
+      os.close();
+    }
+  }
+
+  private static Response help(HttpExchange exchange) {
+    if (outputRaw(exchange)) {
+      return rawHelp(exchange);
+    }
+    return new Response(HTML_HEADER
+            + "<h1>Commands of Meta-Agent</h1>"
+            + "<table>"
+            + "<tr><th>Path</th><th>Description</th><th>Example</th></tr>"
             + commands.stream()
-                .map(
+            .map(
                     c -> {
                       Function<String, String> formatPath =
-                          p -> "<a href='" + p + "'>" + p + "</a>";
-                      return "<li>"
-                          + c.path.stream().map(formatPath).collect(Collectors.joining(","))
-                          + ": "
-                          + c.description
-                          + " <ul><li>Example: "
-                          + formatPath.apply(c.example)
-                          + "</li></ul></li>";
+                              p -> "<a href='" + p + "'>" + p + "</a>";
+                      return "<tr><td>"
+                              + c.path.stream().map(formatPath).collect(Collectors.joining(","))
+                              + "</td><td>"
+                              + c.description
+                              + "</td><td>"
+                              + formatPath.apply(c.example)
+                              + "</td></tr>";
                     })
-                .collect(Collectors.joining())
-            + "</ul></body>");
+            .collect(Collectors.joining())
+            + "</table>" +
+            "<p>Decompile modes: " + Stream.of(DiffSourceMode.values())
+                    .map(m -> "<code>?mode=" + m.param + "</code>")
+                    .collect(Collectors.joining(", ")) + "</p>" +
+            "<p>Get raw version of the output: <code>?output=raw</code></p>" +
+            "</body>", true);
+  }
+
+  private static Response rawHelp(HttpExchange exchange) {
+    // plain text version of help, including decompile modes
+    // in the format "Path: (align)Description (Example)"
+    String commandHelp =
+        commands.stream()
+            .map(
+                c -> {
+                  Function<String, String> formatPath =
+                      p -> p + ":\n  " + c.description + "\n  Example: " + c.example + ")";
+                  return c.path.stream().map(formatPath).collect(Collectors.joining("\n"));
+                })
+            .collect(Collectors.joining("\n"));
+    String modeHelp = Stream.of(DiffSourceMode.values())
+        .map(m -> "?mode=" + m.param)
+        .collect(Collectors.joining(", "));
+    String outputHelp = "?output=raw";
+    return new Response(
+        "Commands of Meta-Agent\n" + commandHelp + "\nDecompile modes: " + modeHelp + "\nGet raw version of the output: " + outputHelp, false);
   }
 
   private static Pattern getMatchPattern(String pattern) {
@@ -235,31 +298,39 @@ public class Main {
     return Pattern.compile(regexp);
   }
 
-  private static Pattern getMatchPattern(Context ctx) {
-    if (ctx.pathParamMap().containsKey("pattern")) {
-      return getMatchPattern(ctx.pathParam("pattern"));
+  private static Pattern getMatchPattern(HttpExchange exchange) {
+    Map<String, String> params = getURLParameters(exchange);
+    if (params.containsKey("pattern")) {
+      return getMatchPattern(params.get("pattern"));
     }
     return Pattern.compile(".*");
   }
 
-  private static List<String> getInstrumentatorNames(Context ctx) {
-    var pattern = getMatchPattern(ctx);
+  private static List<String> getInstrumentatorNames(HttpExchange exchange) {
+    var pattern = getMatchPattern(exchange);
     return InstrumentationHandler.getInstrumentatorNames(pattern);
   }
 
-  private static void listInstrumentators(Context ctx) {
-    ctx.contentType("text/html");
+  private static boolean outputRaw(HttpExchange exchange) {
+    return getURLParameters(exchange).containsKey("output") && getURLParameters(exchange).get("output").equals("raw");
+  }
+
+  private static Response listInstrumentators(HttpExchange exchange) {
+    var instrs = getInstrumentatorNames(exchange);
+    if (outputRaw(exchange)) {
+      return new Response(String.join("\n", instrs), false);
+    }
     String listWithLinks =
-        getInstrumentatorNames(ctx).stream()
+        instrs.stream()
             .map(
                 instrumentator ->
-                    "<li><a href='/diff/instrumentator/"
+                    "<li><a href='/diff/instrumentator?pattern="
                         + instrumentator
                         + "'>"
                         + instrumentator
                         + "</a></li>")
             .collect(Collectors.joining());
-    ctx.result(
+    return new Response(
         """
                     <!DOCTYPE html>
                     <h1>Instrumentators</h1>
@@ -268,13 +339,13 @@ public class Main {
             + listWithLinks
             + """
                     </ul>
-                    """);
+                    """, true);
   }
 
   @SuppressWarnings("unchecked")
-  private static List<Class<?>> getClasses(Context ctx) {
-    boolean all = ctx.path().contains("/all/");
-    var pattern = getMatchPattern(ctx);
+  private static List<Class<?>> getClasses(HttpExchange exchange) {
+    boolean all = exchange.getRequestURI().getPath().contains("/all/");
+    var pattern = getMatchPattern(exchange);
     Predicate<Class> classPredicate = c -> pattern.matcher(c.getName()).matches();
     Comparator<Class> classComparator = Comparator.comparing(Class::getName);
     var instrumented =
@@ -295,15 +366,19 @@ public class Main {
                 .toList();
   }
 
-  private static void listClasses(Context ctx) {
-    ctx.contentType("text/html");
+  private static Response listClasses(HttpExchange exchange) {
+    boolean raw = outputRaw(exchange);
     String listWithLinks =
-        getClasses(ctx).stream()
+        getClasses(exchange).stream()
             .map(
                 clazz -> {
                   boolean instrumented = InstrumentationHandler.isInstrumented(clazz);
                   if (instrumented) {
-                    return "<li><a href='/full-diff/class/"
+                    if (raw) {
+                      return clazz.getName() + ", /full-diff/class/"
+                              + clazz.getName();
+                    }
+                    return "<li><a href='/full-diff/class?pattern="
                         + clazz.getName()
                         + "'>"
                         + clazz.getName()
@@ -313,17 +388,27 @@ public class Main {
                       return "";
                     }
                     if (inst.isModifiableClass(clazz)) {
-                      return "<li><a href='/all/decompile/"
+                      if (raw) {
+                        return clazz.getName() + ", /all/decompile?pattern="
+                            + clazz.getName();
+                      }
+                      return "<li><a href='/all/decompile?pattern="
                           + clazz.getName()
                           + "'>"
                           + clazz.getName()
                           + " (only decompile)</a></li>";
                     }
+                    if (raw) {
+                      return clazz.getName();
+                    }
                     return "<li>" + clazz.getName() + "</li>";
                   }
                 })
             .collect(Collectors.joining());
-    ctx.result(
+    if (raw) {
+      return new Response(String.join("\n", listWithLinks), false);
+    }
+    return new Response(
         """
                     <!DOCTYPE html>
                     <h1>Classes</h1>
@@ -332,19 +417,57 @@ public class Main {
             + listWithLinks
             + """
                     </ul>
-                    """);
+                    """, true);
   }
 
-  private static String getDecompiledHtmlHeader(DiffSourceMode mode) {
-    return mode == DiffSourceMode.JAVA ? DECOMPILED_HTML_HEADER : DECOMPILED_JAVAP_HEADER;
+  private static Map<String, String> getURLParameters(HttpExchange exchange) {
+    String query = exchange.getRequestURI().getQuery();
+    if (query == null) {
+      return Map.of();
+    }
+    return Arrays.stream(query.split("&"))
+        .map(s -> s.split("="))
+        .collect(Collectors.toMap(a -> a[0], a -> a[1]));
   }
 
-  private static void decompileClasses(Context ctx) {
-    ctx.contentType("text/html");
-    List<Class<?>> classes = getClasses(ctx);
-    StringBuilder sb = new StringBuilder();
-    DiffSourceMode mode = getMode(ctx);
-    sb.append(getDecompiledHtmlHeader(mode));
+  private static String combineURL(HttpExchange exchange, Map<String, String> parameters) {
+    String url = exchange.getRequestURI().toString();
+    String query = parameters.entrySet().stream().sorted(
+            Comparator.comparing((Map.Entry<String, String> e) -> e.getKey().equals("mode"))
+                    .thenComparing(e -> e.getKey().equals("output"))
+    ).map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining("&"));
+    return url.split("\\?")[0] + "?" + query;
+  }
+
+  private static String getDecompiledHtmlHeader(HttpExchange exchange, DiffSourceMode mode) {
+    String base = HTML_HEADER + mode.htmlHeader;
+    // get url without mode parameter
+    String url = exchange.getRequestURI().toString();
+    Map<String, String> params = getURLParameters(exchange);
+    params.remove("mode");
+    List<String> otherModes = Stream.of(DiffSourceMode.values())
+        .filter(m -> m != mode)
+        .map(
+            m -> {
+              Map<String, String> newParams = new HashMap<>(params);
+              newParams.put("mode", m.param);
+              return
+                  "<a href='"
+                      + combineURL(exchange, newParams)
+                      + "'>"
+                      + m.param
+                      + "</a>";
+            }).toList();
+    params.put("output", "raw");
+    String rawModeLink = "<a href='" + combineURL(exchange, params) + "'>raw</a>";
+    return base + "<br/><em>Other decompile modes: " + String.join(", ", otherModes) + ", and you can also output this as " +
+            "a raw file using " + rawModeLink + " (split by <code>##### name</code> into parts)</em>";
+  }
+
+  private static Response decompileClasses(HttpExchange exchange) {
+    boolean raw = outputRaw(exchange);
+    List<Class<?>> classes = getClasses(exchange);
+    DiffSourceMode mode = getMode(exchange);
     Map<Class<?>, byte[]> bytecodes =
         classes.stream()
             .filter(inst::isModifiableClass)
@@ -360,9 +483,17 @@ public class Main {
                     }));
     System.out.println("Decompiling " + bytecodes.size() + " classes");
     Map<Class<?>, String> decompiledClasses = BytecodeDiffUtils.decompileClasses(bytecodes, mode);
+    StringBuilder sb = new StringBuilder();
+    if (!raw) {
+      sb.append(getDecompiledHtmlHeader(exchange, mode));
+    }
     for (Class<?> c : classes) {
       String code = decompiledClasses.get(c);
       if (code == null) {
+        continue;
+      }
+      if (raw) {
+        sb.append("##### ").append(c.getName()).append("\n");
         continue;
       }
       sb.append("<h1>").append(c.getName()).append("</h1>");
@@ -375,55 +506,67 @@ public class Main {
       sb.append(makeCodeHtmlFriendly(code));
       sb.append("</code></pre>");
     }
-    sb.append("<script>hljs.highlightAll();</script>");
-    sb.append("</body>");
-    ctx.result(sb.toString());
+    if (!raw) {
+      sb.append("<script>hljs.highlightAll();</script>");
+      sb.append("</body>");
+    }
+    return new Response(sb.toString(), !raw);
   }
 
   private static String makeCodeHtmlFriendly(String code) {
     return code.replace("<", "&lt;").replace(">", "&gt;");
   }
 
-  private static DiffSourceMode getMode(Context ctx) {
-    String modeParam = ctx.queryParam("mode");
+  private static DiffSourceMode getMode(HttpExchange exchange) {
+    Map<String, String> params = getURLParameters(exchange);
+    String modeParam = params.get("mode");
     if (modeParam == null) {
       return DiffSourceMode.JAVA;
     }
-    return switch (modeParam) {
-      case "java" -> DiffSourceMode.JAVA;
-      case "javap" -> DiffSourceMode.VERBOSE_BYTECODE;
-      case "javap-verbose" -> DiffSourceMode.ULTRA_VERBOSE_BYTECODE;
-      default -> throw new IllegalArgumentException("Invalid mode: " + modeParam);
-    };
+    return Stream.of(DiffSourceMode.values())
+        .filter(m -> m.param.equalsIgnoreCase(modeParam))
+        .findFirst()
+            .orElseThrow(
+                () -> {
+                  String message = "Invalid decompilation mode: " + modeParam;
+                  System.err.println(message);
+                  return new IllegalArgumentException(message);
+                });
   }
 
-  private static void showInstrumentatorDiffs(Context ctx) {
-    ctx.contentType("text/html");
+  private static Response showInstrumentatorDiffs(HttpExchange exchange) {
+    boolean raw = outputRaw(exchange);
+    boolean fullDiff = exchange.getRequestURI().getPath().contains("full-diff/");
+    DiffSourceMode mode = getMode(exchange);
     StringBuilder sb = new StringBuilder();
-    boolean fullDiff = ctx.path().contains("full-diff/");
-    DiffSourceMode mode = getMode(ctx);
-    sb.append(getDecompiledHtmlHeader(mode));
-    for (String instrumentator : getInstrumentatorNames(ctx)) {
+    if (!raw) {
+      sb.append(getDecompiledHtmlHeader(exchange, mode));
+    }
+    for (String instrumentator : getInstrumentatorNames(exchange)) {
       var diffs = InstrumentationHandler.getInstrumentatorDiffs(instrumentator);
-      sb.append("<h1>").append(instrumentator).append("</h1>");
+      if (raw) {
+        sb.append("##### ").append(instrumentator).append("\n");
+      } else {
+        sb.append("<h1>").append(instrumentator).append("</h1>");
 
-      List<Class<?>> classesWithMultipleDiffs =
-          diffs.getDiffs().entrySet().stream()
-              .filter(e -> e.getValue().size() > 1)
-              .map(Entry::getKey)
-              .collect(Collectors.toList());
-      if (!classesWithMultipleDiffs.isEmpty()) {
-        sb.append("Classes with multiple diffs");
-        sb.append("<ul>");
-        for (var clazz : classesWithMultipleDiffs) {
-          sb.append("<li><a href='/diff/class/")
-              .append(clazz.getName())
-              .append("'>")
-              .append(clazz.getName())
-              .append("</a></li>");
+        List<Class<?>> classesWithMultipleDiffs =
+            diffs.getDiffs().entrySet().stream()
+                .filter(e -> e.getValue().size() > 1)
+                .map(Entry::getKey)
+                .collect(Collectors.toList());
+        if (!classesWithMultipleDiffs.isEmpty()) {
+          sb.append("Classes with multiple diffs");
+          sb.append("<ul>");
+          for (var clazz : classesWithMultipleDiffs) {
+            sb.append("<li><a href='/diff/class?pattern=")
+                .append(clazz.getName())
+                .append("'>")
+                .append(clazz.getName())
+                .append("</a></li>");
+          }
+          sb.append("</ul>");
+          sb.append("Only showing the first diff for each class");
         }
-        sb.append("</ul>");
-        sb.append("Only showing the first diff for each class");
       }
 
       Map<Class<?>, BytecodeDiff> firstDiffs =
@@ -435,39 +578,74 @@ public class Main {
                         var val = e.getValue().get(0);
                         return new BytecodeDiff(val.old(), val.current());
                       }));
-
-      sb.append(formatDiff(BytecodeDiffUtils.diff(firstDiffs, mode, fullDiff), true));
+      var diff = BytecodeDiffUtils.diff(firstDiffs, mode, fullDiff);
+      if (raw) {
+        sb.append("##### patch instrumentator ").append(instrumentator).append("\n");
+        sb.append(diff).append("\n");
+        for (var clazz : diffs.getDiffs().keySet()) {
+          var old = diffs.getDiffs().get(clazz).get(0).old();
+          var current = diffs.getDiffs().get(clazz).get(diffs.getDiffs().get(clazz).size() - 1).current();
+          sb.append("##### patch class ").append(clazz.getName()).append("\n");
+          sb.append(BytecodeDiffUtils.diff(
+              Map.of(clazz, new BytecodeDiff(old, current)),
+              mode, fullDiff)).append("\n");
+          sb.append("##### old class ").append(clazz.getName()).append("\n");
+          sb.append(BytecodeDiffUtils.decompileClasses(Map.of(clazz, old), mode).get(clazz)).append("\n");
+          sb.append("##### new class ").append(clazz.getName()).append("\n");
+          sb.append(BytecodeDiffUtils.decompileClasses(Map.of(clazz, current), mode).get(clazz)).append("\n");
+        }
+      } else {
+        sb.append(formatDiff(diff, true));
+      }
     }
-    sb.append("</body>");
-    ctx.result(sb.toString());
+    if (!raw) {
+      sb.append("<script>hljs.highlightAll();</script>");
+    }
+    return new Response(sb.toString(), !raw);
   }
 
-  private static void showClassDiffs(Context ctx) {
-    ctx.contentType("text/html");
+  private static Response showClassDiffs(HttpExchange exchange) {
+    boolean fullDiff = exchange.getRequestURI().getPath().contains("full-diff/");
+    DiffSourceMode mode = getMode(exchange);
+    Map<String, String> params = getURLParameters(exchange);
+    Pattern instrPattern = params.containsKey("instr") ? getMatchPattern(params.get("instr")) : Pattern.compile(".*");
+    boolean raw = outputRaw(exchange);
     StringBuilder sb = new StringBuilder();
-    boolean fullDiff = ctx.path().contains("full-diff/");
-    DiffSourceMode mode = getMode(ctx);
-    Pattern instrPattern =
-        ctx.pathParamMap().containsKey("instr")
-            ? getMatchPattern(ctx.pathParam("instr"))
-            : Pattern.compile(".*");
-    sb.append(getDecompiledHtmlHeader(mode));
-    for (Class<?> clazz : getClasses(ctx)) {
-      sb.append("<h1>").append(clazz.getName()).append("</h1>");
+    if (!raw) {
+      sb.append(getDecompiledHtmlHeader(exchange, mode));
+    }
+    for (Class<?> clazz : getClasses(exchange)) {
+      if (raw) {
+        sb.append("##### ").append(clazz.getName()).append("\n");
+      } else {
+        sb.append("<h1>").append(clazz.getName()).append("</h1>");
+      }
       for (var diff : InstrumentationHandler.getClassDiffs().get(clazz).getDiffs()) {
         if (!instrPattern.matcher(diff.instrumentator().name()).matches()) {
           continue;
         }
-        sb.append("<h2>").append(diff.instrumentator().name()).append("</h2>");
-        sb.append(
-            formatDiff(
-                BytecodeDiffUtils.diff(
-                    Map.of(clazz, new BytecodeDiff(diff.old(), diff.current())), mode, fullDiff),
-                false));
+        if (raw) {
+          sb.append("##### patch instrumentator ").append(diff.instrumentator().name()).append("\n");
+          sb.append(BytecodeDiffUtils.diff(
+              Map.of(clazz, new BytecodeDiff(diff.old(), diff.current())), mode, fullDiff)).append("\n");
+          sb.append("##### old class ").append(clazz.getName()).append("\n");
+          sb.append(BytecodeDiffUtils.decompileClasses(Map.of(clazz, diff.old()), mode).get(clazz)).append("\n");
+          sb.append("##### new class ").append(clazz.getName()).append("\n");
+          sb.append(BytecodeDiffUtils.decompileClasses(Map.of(clazz, diff.current()), mode).get(clazz)).append("\n");
+        } else {
+          sb.append("<h2>").append(diff.instrumentator().name()).append("</h2>");
+          sb.append(
+              formatDiff(
+                  BytecodeDiffUtils.diff(
+                      Map.of(clazz, new BytecodeDiff(diff.old(), diff.current())), mode, fullDiff),
+                  false));
+        }
       }
     }
-    sb.append("</body>");
-    ctx.result(sb.toString());
+    if (!raw) {
+      sb.append("</body>");
+    }
+    return new Response(sb.toString(), !raw);
   }
 
   private static final AtomicLong diffIdCounter = new AtomicLong(0);
@@ -477,8 +655,8 @@ public class Main {
     return """
     Output format:
     <select onchange='showID()' id='output-mode-ID'>
-    <option value="line-by-line" selected='selected'>Line by Line</option>
-    <option value="side-by-side">Side by Side</option>
+    <option value="line-by-line">Line by Line</option>
+    <option value="side-by-side" selected='selected'>Side by Side</option>
     </select>
     <div style='display: none'>
     <pre id="diff-ID">
