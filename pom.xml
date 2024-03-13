@@ -85,6 +85,20 @@
                             </arguments>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>download-resources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <workingDirectory>${project.basedir}</workingDirectory>
+                            <executable>python3</executable>
+                            <arguments>
+                                <argument>bin/download_resources.py</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>

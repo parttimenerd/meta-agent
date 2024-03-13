@@ -17,12 +17,14 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.jar.JarFile;
+import java.util.logging.FileHandler;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import me.bechberger.meta.BytecodeDiffUtils.DiffSourceMode;
 import me.bechberger.meta.runtime.InstrumentationHandler;
+import org.jetbrains.annotations.NotNull;
 
 /** Agent entry */
 public class Main {
@@ -167,15 +169,15 @@ public class Main {
  <!DOCTYPE html>
          <head>
             <meta charset="utf-8" />
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.1/styles/github.min.css" />
+            <link rel="stylesheet" href="/file/highlight.css" />
             <link
               rel="stylesheet"
               type="text/css"
-              href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css"
+              href="/file/diff2html.css"
             />
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
-            <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html-ui.min.js"></script>
+            <script src="/file/highlight.js"></script>
+            <script src="/file/highlight.java.js"></script>
+            <script src="/file/diff2html.js"></script>
             <style>
             body {
               margin: 1em;
@@ -203,11 +205,33 @@ public class Main {
           server.createContext(actualPath, new MyHandler(command.handler));
         }
       }
+      server.createContext("/file/", getFileHTTPHandler());
       server.setExecutor(null); // creates a default executor
       server.start();
     } catch (IOException e) {
       e.printStackTrace();
     }
+  }
+
+  private static final Map<String, String> suffixToMime = Map.of("css", "text/css", "js", "text/javascript");
+
+  @NotNull
+  private static HttpHandler getFileHTTPHandler() {
+    return exchange -> {
+      String name = exchange.getRequestURI().getPath().substring("/file/".length());
+      Path file = extractFile(name);
+      if (!Files.exists(file)) {
+        exchange.sendResponseHeaders(404, 0);
+        exchange.getResponseBody().close();
+        return;
+      }
+
+      var suffix = name.substring(name.lastIndexOf(".") + 1);
+      exchange.getResponseHeaders().add("Content-Type", suffixToMime.getOrDefault(suffix, "text/plain"));
+      exchange.sendResponseHeaders(200, Files.size(file));
+      Files.copy(file, exchange.getResponseBody());
+      exchange.getResponseBody().close();
+    };
   }
 
   static class MyHandler implements HttpHandler {
@@ -738,5 +762,21 @@ public class Main {
     }
     inst.removeTransformer(transformer);
     return bytes[0];
+  }
+
+  private static Path extractFile(String name) {
+    try {
+      Path path = Files.createTempFile("meta-agent", name);
+      path.toFile().deleteOnExit();
+      try (InputStream in = Main.class.getClassLoader().getResourceAsStream(name)) {
+        if (in == null) {
+          throw new RuntimeException("Could not find " + name);
+        }
+        Files.copy(in, path, StandardCopyOption.REPLACE_EXISTING);
+      }
+      return path;
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

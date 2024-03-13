@@ -41,3 +41,5 @@ build/
 *.html
 harness-*
 .idea
+
+src/main/resources
