@@ -10,7 +10,7 @@ This is especially useful to check what libraries like [Mockito](https://site.mo
 To run it, build the project with `mvn package -DskipTests` and run your Java program with the agent:
 
 ```shell
-java -javaagent:target/meta.jar -jar your-program.jar
+java -javaagent:target/meta-agent.jar -jar your-program.jar
 
 # or run a Mockito based sample test
 mvn package -DskipTests
