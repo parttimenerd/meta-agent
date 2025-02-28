@@ -38,6 +38,7 @@ public class Main {
     private static Instrumentation inst;
 
     static class Options {
+        boolean server = false;
         int port = 7071;
         boolean help = false;
         Set<String> callbackClasses = new HashSet<>();
@@ -48,6 +49,7 @@ public class Main {
 
     static final List<Option> OPTIONS = List.of(
             new Option("help", "Show this help", false, (o, a) -> o.help = true),
+            new Option("server", "Start the server at the passed port (default 7071)", false, (o, a) -> o.server = true),
             new Option("port", "Port to start the server on, default 7071", true, (o, a) -> o.port = Integer.parseInt(a)),
             new Option("cb", "Callback class names, classes have to implement the InstrumentationCallback interface", true, (o, a) -> {
                 o.callbackClasses.add(a);
@@ -90,6 +92,10 @@ public class Main {
     }
 
     public static void premain(String agentArgs, Instrumentation inst) {
+        if (agentArgs.isEmpty()) {
+            System.out.println(getHelp());
+            return;
+        }
         try {
             inst.appendToBootstrapClassLoaderSearch(new JarFile(getExtractedJARPath().toFile()));
         } catch (IOException e) {
@@ -105,11 +111,13 @@ public class Main {
         // transform all loaded classes
         triggerRetransformOfAllClasses(inst);
         // start server
-        Thread thread =
-                new Thread(
-                        () -> runServer(options.port));
-        thread.setDaemon(true);
-        thread.start();
+        if (options.server) {
+            Thread thread =
+                    new Thread(
+                            () -> runServer(options.port));
+            thread.setDaemon(true);
+            thread.start();
+        }
     }
 
     private static void triggerRetransformOfAllClasses(Instrumentation inst) {

@@ -131,7 +131,6 @@ public class ClassTransformer implements ClassFileTransformer {
                             return;
                         }
                         // check the number of arguments
-                        System.out.println("Instrumenting " + className + " " + m.getSignature());
                         int argCount = m.getSignature().contains("Z") ? 2 : 1;
                         // replace
                         if (argCount == 1) {

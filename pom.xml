@@ -135,6 +135,14 @@
                                     <pattern>javax</pattern>
                                     <shadedPattern>me.bechberger.meta.shaded.javax</shadedPattern>
                                 </relocation>
+                                <relocation>
+                                    <pattern>org.jetbrains</pattern>
+                                    <shadedPattern>me.bechberger.meta.shaded.org.jetbrains</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.vineflower</pattern>
+                                    <shadedPattern>me.bechberger.meta.shaded.org.vineflower</shadedPattern>
+                                </relocation>
                             </relocations>
                         </configuration>
                     </execution>
