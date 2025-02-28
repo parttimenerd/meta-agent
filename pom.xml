@@ -8,6 +8,30 @@
     <artifactId>meta-agent</artifactId>
     <version>0.0.1</version>
 
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>parttimenerd</id>
+            <name>Johannes Bechberger</name>
+            <email>me@mostlynerdless.de</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git@github.com:parttimenerd/meta-agent.git</connection>
+        <developerConnection>scm:git:https://github.com/parttimenerd/meta-agent.git</developerConnection>
+        <url>https://github.com/parttimenerd/meta-agent</url>
+    </scm>
+
+    <inceptionYear>2024</inceptionYear>
+    <description>A Java instrumenter to instrument instrumenters</description>
+
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
@@ -180,4 +204,16 @@
             <version>1.10.1</version>
         </dependency>
     </dependencies>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/releases/
+            </url>
+        </repository>
+    </distributionManagement>
 </project>

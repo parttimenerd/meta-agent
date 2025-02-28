@@ -83,6 +83,13 @@ Contributions
 If you have sample programs where this tool helped to see something interesting, please share.
 Contributions, issues and PRs are welcome.
 
+Deploy
+------
+```shell
+mvn package -DskipTests=true deploy -U
+mvn package -f pom_runtime.xml -DskipTests=true deploy -U
+```
+
 License
 -------
 MIT, Copyright 2024 SAP SE or an SAP affiliate company, Johannes Bechberger
