@@ -6,28 +6,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Class that holds the diffs for a single instrumentator */
+/**
+ * Class that holds the diffs for a single instrumentator
+ */
 public class PerInstrumentator {
 
-  private final Instrumentator instrumentator;
+    private final Instrumentator instrumentator;
 
-  private final Map<Class<?>, List<BytecodeDiff>> diffs = new ConcurrentHashMap<>();
+    private final Map<Class<?>, List<BytecodeDiff>> diffs = new ConcurrentHashMap<>();
 
-  public PerInstrumentator(Instrumentator instrumentator) {
-    this.instrumentator = instrumentator;
-  }
+    public PerInstrumentator(Instrumentator instrumentator) {
+        this.instrumentator = instrumentator;
+    }
 
-  void addDiff(Class<?> clazz, byte[] old, byte[] current) {
-    diffs
-        .computeIfAbsent(clazz, k -> Collections.synchronizedList(new ArrayList<>()))
-        .add(new BytecodeDiff(instrumentator, clazz, old, current));
-  }
+    void addDiff(Class<?> clazz, byte[] old, byte[] current) {
+        diffs
+                .computeIfAbsent(clazz, k -> Collections.synchronizedList(new ArrayList<>()))
+                .add(new BytecodeDiff(instrumentator, clazz, old, current));
+    }
 
-  public Map<Class<?>, List<BytecodeDiff>> getDiffs() {
-    return Collections.unmodifiableMap(diffs);
-  }
+    public Map<Class<?>, List<BytecodeDiff>> getDiffs() {
+        return Collections.unmodifiableMap(diffs);
+    }
 
-  public Instrumentator getInstrumentator() {
-    return instrumentator;
-  }
+    public Instrumentator getInstrumentator() {
+        return instrumentator;
+    }
 }

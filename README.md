@@ -15,6 +15,9 @@ java -javaagent:target/meta-agent.jar -jar your-program.jar
 # or run a Mockito based sample test
 mvn package -DskipTests
 mvn test -DargLine="-javaagent:target/meta-agent.jar"
+
+# or run with an instrumentation handler
+mvn -DargLine="-javaagent:target/meta-agent.jar=cb=me.bechberger.meta.LoggingInstrumentationHandler" test
 ```
 
 The executed [MockitoTest](src/test/java/me/bechberger/meta/MockitoTest.java) looks as follows:

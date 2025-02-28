@@ -7,6 +7,7 @@ Download resources from the web and save them to the resources folder.
 from pathlib import Path
 import os
 from typing import Dict
+exit(0)
 
 import requests
 
