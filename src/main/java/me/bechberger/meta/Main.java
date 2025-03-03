@@ -3,8 +3,6 @@ package me.bechberger.meta;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import me.bechberger.meta.runtime.Decompilation;
-import me.bechberger.meta.runtime.DiffSourceMode;
 import me.bechberger.meta.runtime.InstrumentationHandler;
 import org.jetbrains.annotations.NotNull;
 
@@ -92,7 +90,7 @@ public class Main {
     }
 
     public static void premain(String agentArgs, Instrumentation inst) {
-        if (agentArgs.isEmpty()) {
+        if (agentArgs == null || agentArgs.isEmpty()) {
             System.out.println(getHelp());
             return;
         }

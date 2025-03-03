@@ -79,8 +79,7 @@ public interface InstrumentationCallbacks {
                 curFunc = (bytecode) -> callback.onTransform(transformer, before, finalCurFunc);
             }
 
-            return current;
+            return curFunc.apply(current);
         }
-        // return runnable.apply(before.bytecode);
     }
 }

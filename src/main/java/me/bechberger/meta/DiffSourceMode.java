@@ -1,4 +1,4 @@
-package me.bechberger.meta.runtime;
+package me.bechberger.meta;
 
 public enum DiffSourceMode {
     JAVA(".java", "java", """

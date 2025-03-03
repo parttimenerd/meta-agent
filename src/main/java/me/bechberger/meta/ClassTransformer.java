@@ -33,8 +33,7 @@ public class ClassTransformer implements ClassFileTransformer {
     }
 
     private static boolean canTransformClass(String name) {
-        return !name.startsWith("java/")
-                && !name.startsWith("jdk/internal")
+        return !name.startsWith("jdk/internal")
                 && !name.startsWith("com/sun/")
                 && !name.startsWith("me/bechberger/meta/Main")
                 && !name.startsWith("me/bechberger/meta/runtime");

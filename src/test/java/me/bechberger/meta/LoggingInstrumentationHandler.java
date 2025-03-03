@@ -17,4 +17,10 @@ public class LoggingInstrumentationHandler implements InstrumentationCallback {
     public void onExistingTransformer(ClassFileTransformer transformer) {
         System.err.println("Existing transformer " + transformer.getClass().getName());
     }
+
+    @Override
+    public CallbackAction onInstrumentation(ClassFileTransformer transformer, ClassArtifact before, ClassArtifact after) {
+        System.out.println("Instrumenting " + before.klass().getName());
+        return CallbackAction.ALLOW;
+    }
 }

@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -26,6 +27,8 @@ public class MockitoTest {
     Mockito.when(mockedList.size()).thenReturn(100);
     assertEquals(100, mockedList.size());
 
-    Thread.sleep(10000000L);
+    Function<Integer, String> function = (i) -> "Mockito";
+    assertEquals("Mockito", function.apply(10));
+
   }
 }

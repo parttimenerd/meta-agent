@@ -53,11 +53,8 @@ public class InstrumentationHandler {
                             String className,
                             Class<?> classBeingRedefined,
                             ProtectionDomain protectionDomain,
-                            byte[] classfileBuffer)
-                            throws IllegalClassFormatException {
+                            byte[] classfileBuffer) {
 
-                        // System.out.println("Transforming " + className + " with " + transformer + " and
-                        // retransform " + canRetransform);
                         byte[] old = classfileBuffer.clone();
 
                         byte[] current = InstrumentationCallbacks.transform(
@@ -99,20 +96,9 @@ public class InstrumentationHandler {
                             String className,
                             Class<?> classBeingRedefined,
                             ProtectionDomain protectionDomain,
-                            byte[] classfileBuffer)
-                            throws IllegalClassFormatException {
-                        // System.out.println("Transforming " + className + " with " + transformer + " and
-                        // retransform " + canRetransform);
-                        byte[] old = classfileBuffer.clone();
-                        byte[] current =
-                                transformer.transform(
-                                        loader, className, classBeingRedefined, protectionDomain, classfileBuffer);
-                        addDiff(
-                                new Instrumentator(transformer.getClass().getName()),
-                                classBeingRedefined,
-                                old,
-                                current);
-                        return current;
+                            byte[] classfileBuffer) {
+                        return transform(
+                                null, loader, className, classBeingRedefined, protectionDomain, classfileBuffer);
                     }
                 },
                 canRetransform);

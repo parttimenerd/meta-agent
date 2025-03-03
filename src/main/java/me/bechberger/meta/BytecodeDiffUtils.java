@@ -1,8 +1,5 @@
 package me.bechberger.meta;
 
-import me.bechberger.meta.runtime.Decompilation;
-import me.bechberger.meta.runtime.DiffSourceMode;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

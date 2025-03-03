@@ -1,4 +1,4 @@
-package me.bechberger.meta.runtime;
+package me.bechberger.meta;
 
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler;
@@ -78,12 +78,13 @@ public class Decompilation {
                 Files.write(classPath, bytecodePerClass.get(c));
                 classPaths.add(classPath);
             }
-            String[] args = new String[classPaths.size() + 2];
-            args[0] = "-jrt=1"; // use current runtime
+            String[] addArgs = "-jrt=1 -rbr=0 -rsy=0".split(" ");
+            String[] args = new String[classPaths.size() + 1 + addArgs.length];
+            System.arraycopy(addArgs, 0, args, 0, addArgs.length);
             for (int i = 0; i < classPaths.size(); i++) {
-                args[i + 1] = classPaths.get(i).toString();
+                args[addArgs.length + i] = classPaths.get(i).toString();
             }
-            args[bytecodePerClass.size() + 1] = tmpDir.toString();
+            args[args.length - 1] = tmpDir.toString();
             ConsoleDecompiler.main(args);
             for (Class<?> c : bytecodePerClass.keySet()) {
                 var path = tmpDir.resolve(c.getSimpleName() + ".java");
@@ -111,6 +112,7 @@ public class Decompilation {
             args.add("javap");
             args.add("-cp");
             args.add(".");
+            args.add("-p");
             args.add("-c"); // show bytecode
             if (ultraVerbose) {
                 args.add("-v");
