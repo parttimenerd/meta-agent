@@ -10,7 +10,6 @@ public class LoggingInstrumentationHandler implements InstrumentationCallback {
     @Override
     public CallbackAction onAddTransformer(ClassFileTransformer transformer) {
         System.err.println("New transformer " + transformer.getClass().getName());
-        new RuntimeException().printStackTrace();
         return CallbackAction.ALLOW;
     }
 
@@ -21,7 +20,6 @@ public class LoggingInstrumentationHandler implements InstrumentationCallback {
 
     @Override
     public CallbackAction onInstrumentation(ClassFileTransformer transformer, ClassArtifact before, ClassArtifact after) {
-        System.out.println(Thread.currentThread().getName());
         return CallbackAction.ALLOW;
     }
 }

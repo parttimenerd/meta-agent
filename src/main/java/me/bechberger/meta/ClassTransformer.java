@@ -34,9 +34,7 @@ public class ClassTransformer implements ClassFileTransformer {
 
     private static boolean canTransformClass(String name) {
         return !name.startsWith("jdk/internal")
-                && !name.startsWith("com/sun/")
-                && !name.startsWith("me/bechberger/meta/Main")
-                && !name.startsWith("me/bechberger/meta/runtime");
+                && !name.startsWith("com/sun/");
     }
 
     public static boolean canTransformClass(Class<?> klass) {
@@ -122,6 +120,9 @@ public class ClassTransformer implements ClassFileTransformer {
 
     private void transform(String className, CtClass cc)
             throws CannotCompileException {
+        if (className.startsWith("me/bechberger/meta/runtime")) {
+            return;
+        }
         var exprEditor =
                 new ExprEditor() {
                     @Override

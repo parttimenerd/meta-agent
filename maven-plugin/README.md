@@ -38,7 +38,7 @@ And the following dependency:
 <dependency>
     <groupId>me.bechberger</groupId>
     <artifactId>meta-agent</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.3</version>
     <scope>test</scope>
 </dependency>
 ```
