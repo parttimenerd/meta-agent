@@ -3,7 +3,7 @@ Meta-Agent Maven Plugin Sample Project
 
 This shows how to use the [Meta-Agent Maven Plugin](../maven-plugin) in a sample project.
 
-It is configured in it's pom to use the [LoggingInstrumentationHandler](src/main/java/me/bechberger/meta/LoggingInstrumentationHandler.java) as a callback handler and to start the meta-agent server.
+It is configured in it's pom to use the [LoggingInstrumentationHandler](src/test/java/me/bechberger/meta/LoggingInstrumentationHandler.java) as a callback handler and to start the meta-agent server.
 
 The instrumentation handler is:
 

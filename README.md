@@ -17,7 +17,7 @@ mvn package -DskipTests
 mvn test -DargLine="-javaagent:target/meta-agent.jar=server"
 
 # or run with an instrumentation handler
-mvn -DargLine="-javaagent:target/meta-agent.jar=cb=me.bechberger.meta.LoggingInstrumentationHandler" test
+mvn -DargLine="-javaagent:target/meta-agent.jar=server,cb=me.bechberger.meta.LoggingInstrumentationHandler" test
 ```
 
 The executed [MockitoTest](src/test/java/me/bechberger/meta/MockitoTest.java) looks as follows:
@@ -65,6 +65,34 @@ Yet we also see via [/classes](http://localhost:7071/classes) that Mockito only 
 interface and all its parents:
 
 ![Screenshot of http://localhost:7071/classes](img/classes.png)
+
+The [LoggingInstrumentationHandler](src/test/java/me/bechberger/meta/LoggingInstrumentationHandler.java)
+which is passed to the agent via the `cb` argument, logs all added and existing transformers.
+
+It is implemented as follows:
+
+```java
+public class LoggingInstrumentationHandler implements InstrumentationCallback {
+  @Override
+  public CallbackAction onAddTransformer(ClassFileTransformer transformer) {
+    System.err.println("New transformer " + transformer.getClass().getName());
+    return CallbackAction.ALLOW;
+  }
+
+  @Override
+  public void onExistingTransformer(ClassFileTransformer transformer) {
+    System.err.println("Existing transformer " + transformer.getClass().getName());
+  }
+
+  @Override
+  public CallbackAction onInstrumentation(ClassFileTransformer transformer, ClassArtifact before, ClassArtifact after) {
+    return CallbackAction.ALLOW;
+  }
+}
+```
+
+The meta-agent can also be used via a [maven plugin](maven-plugin/README.md),
+see the [sample project](maven-plugin-sample/README.md) for an example usage.
 
 How this works
 --------------
