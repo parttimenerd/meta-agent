@@ -37,6 +37,7 @@ public class MainLoop {
     private static Instrumentation inst;
 
     static void run(Main.Options options, Instrumentation inst) {
+        inst.addTransformer(new ClassTransformer(options.callbackClasses), true);
         MainLoop.inst = inst;
         // transform all loaded classes
         triggerRetransformOfAllClasses(inst);

@@ -110,21 +110,6 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>delete-runtime-classes</id>
-                        <phase>prepare-package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <workingDirectory>${project.basedir}</workingDirectory>
-                            <executable>rm</executable>
-                            <arguments>
-                                <argument>-fr</argument>
-                                <argument>target/classes/me/bechberger/meta/runtime</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
                         <id>download-resources</id>
                         <phase>generate-sources</phase>
                         <goals>

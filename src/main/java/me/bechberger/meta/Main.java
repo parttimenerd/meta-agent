@@ -88,7 +88,6 @@ public class Main {
             System.out.println(getHelp());
             return;
         }
-        inst.addTransformer(new ClassTransformer(options.callbackClasses), true);
         MainLoop.run(options, inst);
     }
 

@@ -2,8 +2,8 @@ package me.bechberger.meta.runtime;
 
 public record Klass(String name, Class<?> klass) {
     public Klass {
-        if (name == null || klass == null) {
-            throw new IllegalArgumentException("Name and class must not be null!");
+        if (name == null && klass == null) {
+            throw new IllegalArgumentException("Name and class must not be null at the same time");
         }
     }
 
