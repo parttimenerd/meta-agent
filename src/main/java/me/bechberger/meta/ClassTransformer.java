@@ -12,6 +12,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -147,6 +148,25 @@ public class ClassTransformer implements ClassFileTransformer {
         }
         for (CtMethod method : cc.getDeclaredMethods()) {
             method.instrument(exprEditor);
+
+            /*
+            because:
+            https://github.com/JetBrains/intellij-coverage/blob/master/instrumentation/src/com/intellij/rt/coverage/instrumentation/Instrumentator.java
+            uses reflection
+             */
+
+            if (method.getName().equals("addTransformer") && className.endsWith("Instrumentator") && className.contains("intellij")) {
+                method.instrument(
+                        new ExprEditor() {
+                            @Override
+                            public void edit(MethodCall m) throws CannotCompileException {
+                                if (m.getClassName().equals(Method.class.getName()) && m.getMethodName().equals("invoke")) {
+                                    m.replace(
+                                            "$_ = me.bechberger.meta.runtime.InstrumentationHandler.addTransformerIntelliJReflection($1, $2);");
+                                }
+                            }
+                        });
+            }
         }
     }
 }

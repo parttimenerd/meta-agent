@@ -107,6 +107,11 @@ public class InstrumentationHandler {
         addTransformer(inst, transformer, false);
     }
 
+    public static Object addTransformerIntelliJReflection(Object inst, Object[] args) {
+        addTransformer((Instrumentation) inst, (ClassFileTransformer) args[0], (Boolean) args[1]);
+        return null;
+    }
+
     public static byte[] getCurrentBytecode(Klass clazz) {
         return classDiffs.get(clazz).getDiffs().get(0).current();
     }
