@@ -43,3 +43,4 @@ harness-*
 .idea
 
 src/main/resources
+coverage-example

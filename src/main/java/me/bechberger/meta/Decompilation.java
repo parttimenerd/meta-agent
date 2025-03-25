@@ -1,5 +1,6 @@
 package me.bechberger.meta;
 
+import me.bechberger.meta.runtime.Klass;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler;
 
@@ -18,12 +19,14 @@ public class Decompilation {
             return;
         }
         try {
-            Files.walk(folder).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+            try (var files = Files.walk(folder)) {
+                files.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+            }
         } catch (IOException e) {
         }
     }
 
-    public static Map<Class<?>, String> decompileClasses(Map<Class<?>, byte[]> bytecodePerClass, DiffSourceMode mode) {
+    public static Map<Klass, String> decompileClasses(Map<Klass, byte[]> bytecodePerClass, DiffSourceMode mode) {
         return switch (mode) {
             case JAVA -> decompileClassesToJava(bytecodePerClass);
             case VERBOSE_BYTECODE -> decompileClassesToVerboseBytecode(bytecodePerClass, false);
@@ -31,14 +34,14 @@ public class Decompilation {
         };
     }
 
-    public static Map<Class<?>, String> decompileClassesToJava(Map<Class<?>, byte[]> bytecodePerClass) {
-        Map<String, List<Class<?>>> classesPerSimpleName =
-                bytecodePerClass.keySet().stream().collect(Collectors.groupingBy(Class::getSimpleName));
+    public static Map<Klass, String> decompileClassesToJava(Map<Klass, byte[]> bytecodePerClass) {
+        Map<String, List<Klass>> classesPerSimpleName =
+                bytecodePerClass.keySet().stream().collect(Collectors.groupingBy(Klass::getSimpleName));
         int maxIndex = classesPerSimpleName.values().stream().mapToInt(List::size).max().orElse(0);
         Set<String> toProcess = new HashSet<>(classesPerSimpleName.keySet());
-        Map<Class<?>, String> result = new HashMap<>();
+        Map<Klass, String> result = new HashMap<>();
         for (int i = 0; i < maxIndex; i++) {
-            Map<Class<?>, byte[]> bytecodePerClassForPackage = new HashMap<>();
+            Map<Klass, byte[]> bytecodePerClassForPackage = new HashMap<>();
             Set<String> removeFromProcess = new HashSet<>();
             for (String className : toProcess) {
                 var classes = classesPerSimpleName.get(className);
@@ -55,8 +58,8 @@ public class Decompilation {
         return result;
     }
 
-    private static Map<Class<?>, String> decompileClassesWithoutClassNameDuplicates(
-            Map<Class<?>, byte[]> bytecodePerClass) {
+    private static Map<Klass, String> decompileClassesWithoutClassNameDuplicates(
+            Map<Klass, byte[]> bytecodePerClass) {
         var oldOut = System.out;
         Path tmpDir = null;
         try {
@@ -68,9 +71,9 @@ public class Decompilation {
                                 }
                             }));
             tmpDir = Files.createTempDirectory("classviewer");
-            Map<Class<?>, String> result = new HashMap<>();
+            Map<Klass, String> result = new HashMap<>();
             List<Path> classPaths = new ArrayList<>();
-            for (Class<?> c : bytecodePerClass.keySet()) {
+            for (Klass c : bytecodePerClass.keySet()) {
                 var packageName = c.getPackageName();
                 var path = packageName.isEmpty() ? tmpDir : tmpDir.resolve(packageName.replace(".", "/"));
                 var classPath = path.resolve(c.getSimpleName() + ".class");
@@ -86,7 +89,7 @@ public class Decompilation {
             }
             args[args.length - 1] = tmpDir.toString();
             ConsoleDecompiler.main(args);
-            for (Class<?> c : bytecodePerClass.keySet()) {
+            for (Klass c : bytecodePerClass.keySet()) {
                 var path = tmpDir.resolve(c.getSimpleName() + ".java");
                 if (Files.exists(path)) {
                     result.put(c, Files.readString(path));
@@ -101,12 +104,12 @@ public class Decompilation {
         }
     }
 
-    public static Map<Class<?>, String> decompileClassesToVerboseBytecode(Map<Class<?>, byte[]> bytecodePerClass, boolean ultraVerbose) {
+    public static Map<Klass, String> decompileClassesToVerboseBytecode(Map<Klass, byte[]> bytecodePerClass, boolean ultraVerbose) {
         Path tmpDir = null;
         try {
             tmpDir = Files.createTempDirectory("classviewer");
-            Map<Class<?>, String> result = new HashMap<>();
-            Map<String, Class<?>> classNameToClass = new HashMap<>();
+            Map<Klass, String> result = new HashMap<>();
+            Map<String, Klass> classNameToClass = new HashMap<>();
             int i = 0;
             List<String> args = new ArrayList<>();
             args.add("javap");
@@ -118,7 +121,7 @@ public class Decompilation {
                 args.add("-v");
             }
             // store class bytecode in temporary files
-            for (Map.Entry<Class<?>, byte[]> entry : bytecodePerClass.entrySet()) {
+            for (Map.Entry<Klass, byte[]> entry : bytecodePerClass.entrySet()) {
                 String synthClassName = "class" + i++;
                 Path classFile = tmpDir.resolve(synthClassName + ".class");
                 Files.write(classFile, entry.getValue());

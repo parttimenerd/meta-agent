@@ -17,21 +17,22 @@ import java.util.stream.Collectors;
 public class InstrumentationHandler {
 
     private static final Map<Instrumentator, PerInstrumentator> diffs = new ConcurrentHashMap<>();
-    private static final Map<Class<?>, PerClass> classDiffs = new ConcurrentHashMap<>();
+    private static final Map<Klass, PerClass> classDiffs = new ConcurrentHashMap<>();
 
-    static void addDiff(Instrumentator instrumentator, Class<?> clazz, byte[] old, byte[] current) {
+    static void addDiff(Instrumentator instrumentator, String name, Class<?> clazz, byte[] old, byte[] current) {
         if (Arrays.equals(old, current) || current == null) {
             return;
         }
-        diffs.computeIfAbsent(instrumentator, PerInstrumentator::new).addDiff(clazz, old, current);
-        classDiffs.computeIfAbsent(clazz, c -> new PerClass()).addDiff(instrumentator, clazz, old, current);
+        Klass klass = new Klass(name, clazz);
+        diffs.computeIfAbsent(instrumentator, PerInstrumentator::new).addDiff(klass, old, current);
+        classDiffs.computeIfAbsent(klass, c -> new PerClass()).addDiff(instrumentator, klass, old, current);
     }
 
     public static Map<Instrumentator, PerInstrumentator> getDiffs() {
         return Collections.unmodifiableMap(diffs);
     }
 
-    public static Map<Class<?>, PerClass> getClassDiffs() {
+    public static Map<Klass, PerClass> getClassDiffs() {
         return Collections.unmodifiableMap(classDiffs);
     }
 
@@ -56,7 +57,7 @@ public class InstrumentationHandler {
 
                         byte[] current = InstrumentationCallbacks.transform(
                                 transformer,
-                                new ClassArtifact(classBeingRedefined, classfileBuffer),
+                                new ClassArtifact(new Klass(className, classBeingRedefined), classfileBuffer),
                                 b -> {
                                     try {
                                         return transformer.transform(
@@ -73,14 +74,15 @@ public class InstrumentationHandler {
 
                         if (InstrumentationCallbacks.processInstrumentation(
                                 transformer,
-                                new ClassArtifact(classBeingRedefined, old),
-                                new ClassArtifact(classBeingRedefined, current))
+                                new ClassArtifact(new Klass(className, classBeingRedefined), old),
+                                new ClassArtifact(new Klass(className, classBeingRedefined), current))
                                 == CallbackAction.IGNORE) {
                             return old;
                         }
 
                         addDiff(
                                 new Instrumentator(transformer.getClass().getName()),
+                                className,
                                 classBeingRedefined,
                                 old,
                                 current);
@@ -105,7 +107,7 @@ public class InstrumentationHandler {
         addTransformer(inst, transformer, false);
     }
 
-    public static byte[] getCurrentBytecode(Class<?> clazz) {
+    public static byte[] getCurrentBytecode(Klass clazz) {
         return classDiffs.get(clazz).getDiffs().get(0).current();
     }
 
@@ -125,7 +127,7 @@ public class InstrumentationHandler {
                 .orElseThrow();
     }
 
-    public static boolean isInstrumented(Class<?> clazz) {
+    public static boolean isInstrumented(Klass clazz) {
         return classDiffs.containsKey(clazz);
     }
 }

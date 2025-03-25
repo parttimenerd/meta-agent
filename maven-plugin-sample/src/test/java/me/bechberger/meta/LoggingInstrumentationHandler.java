@@ -9,17 +9,19 @@ import java.lang.instrument.ClassFileTransformer;
 public class LoggingInstrumentationHandler implements InstrumentationCallback {
     @Override
     public CallbackAction onAddTransformer(ClassFileTransformer transformer) {
-        System.err.println("New transformer " + transformer.getClass().getName());
+        commonOnAddTransformer(transformer);
         return CallbackAction.ALLOW;
     }
 
     @Override
     public void onExistingTransformer(ClassFileTransformer transformer) {
-        System.err.println("Existing transformer " + transformer.getClass().getName());
+        commonOnAddTransformer(transformer);
     }
 
-    @Override
-    public CallbackAction onInstrumentation(ClassFileTransformer transformer, ClassArtifact before, ClassArtifact after) {
-        return CallbackAction.ALLOW;
+    void commonOnAddTransformer(ClassFileTransformer transformer) {
+        if (!transformer.getClass().getName().startsWith("org.mockito")) {
+            System.err.println("Unsupported transformer added " + transformer.getClass().getName());
+            System.exit(1);
+        }
     }
 }

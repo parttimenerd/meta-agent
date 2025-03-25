@@ -13,19 +13,19 @@ public class PerInstrumentator {
 
     private final Instrumentator instrumentator;
 
-    private final Map<Class<?>, List<BytecodeDiff>> diffs = new ConcurrentHashMap<>();
+    private final Map<Klass, List<BytecodeDiff>> diffs = new ConcurrentHashMap<>();
 
     public PerInstrumentator(Instrumentator instrumentator) {
         this.instrumentator = instrumentator;
     }
 
-    void addDiff(Class<?> clazz, byte[] old, byte[] current) {
+    void addDiff(Klass clazz, byte[] old, byte[] current) {
         diffs
                 .computeIfAbsent(clazz, k -> Collections.synchronizedList(new ArrayList<>()))
                 .add(new BytecodeDiff(instrumentator, clazz, old, current));
     }
 
-    public Map<Class<?>, List<BytecodeDiff>> getDiffs() {
+    public Map<Klass, List<BytecodeDiff>> getDiffs() {
         return Collections.unmodifiableMap(diffs);
     }
 

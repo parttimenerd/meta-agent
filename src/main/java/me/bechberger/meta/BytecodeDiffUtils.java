@@ -1,5 +1,7 @@
 package me.bechberger.meta;
 
+import me.bechberger.meta.runtime.Klass;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,7 +15,7 @@ import java.util.stream.Collectors;
  */
 public class BytecodeDiffUtils {
 
-    public static String diff(Map<Class<?>, SimpleBytecodeDiff> diffPerClass, DiffSourceMode mode, boolean showAll) {
+    public static String diff(Map<Klass, SimpleBytecodeDiff> diffPerClass, DiffSourceMode mode, boolean showAll) {
         var oldSourcePerClass =
                 Decompilation.decompileClasses(
                         diffPerClass.entrySet().stream()

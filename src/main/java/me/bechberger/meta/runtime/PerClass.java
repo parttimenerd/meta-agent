@@ -14,7 +14,7 @@ public class PerClass {
     public PerClass() {
     }
 
-    void addDiff(Instrumentator instrumentator, Class<?> clazz, byte[] old, byte[] current) {
+    void addDiff(Instrumentator instrumentator, Klass clazz, byte[] old, byte[] current) {
         diffs.add(new BytecodeDiff(instrumentator, clazz, old, current));
     }
 
