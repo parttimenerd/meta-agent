@@ -136,13 +136,19 @@ public class Decompilation {
             // the output for each class starts with the line 'Compiled from "SynthName.java"'
             var lines = out.lines().iterator();
             var lastLine = "";
+            Pattern startPattern = Pattern.compile("(^|([a-z]+ )+)(class|interface|enum|record) [^()]+\\{");
+            if (ultraVerbose) {
+                startPattern = Pattern.compile("^Classfile .*" + tmpDir + "/class[0-9]+.class");
+            }
             while (lines.hasNext()) {
                 var line = lastLine.isEmpty() ? lines.next() : lastLine;
                 if (line.startsWith("Warning: File ")) {
                     continue;
                 }
-                if (line.trim().startsWith("Compiled from ")) {
-                    line = lines.next().trim();
+                if (startPattern.matcher(line).matches()) {
+                    if (ultraVerbose) {
+                        while ((line = lines.next()).startsWith(" "));
+                    }
                     var matcher = Pattern.compile("(^|.* )(class|interface|enum|record) ([^ <]*).*").matcher(line);
                     var className = "";
                     if (matcher.find()) {
@@ -155,7 +161,7 @@ public class Decompilation {
                     classOutput.append(line).append("\n");
                     while (lines.hasNext()) {
                         line = lines.next();
-                        if (line.trim().startsWith("Compiled from ")) {
+                        if (startPattern.matcher(line).matches()) {
                             lastLine = line.trim();
                             break;
                         }
