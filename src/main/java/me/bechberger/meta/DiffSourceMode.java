@@ -9,7 +9,7 @@ public enum DiffSourceMode {
     ULTRA_VERBOSE_BYTECODE(".bytecode", "javap-verbose", """
             <em>Decompiled bytecode using <code>javap -v</code></em>
             """, "javap-verbose"),
-    AI_JAVA(".md", "java-ai", """
+    AI_JAVA(".java", "java-ai", """
             <em>Decompiled bytecode using <a href="https://vineflower.org/">vineflower</a> and then optimized using the locally running $MODEL with ollama, obtained
              when ever this page is loaded. Might contain errors, please check with <code>?mode=javap</code> too.</em>""".replace("$MODEL", Decompilation.AI_MODEL),
             "java-ai", "requires local ollama $MODEL model, is slow".replace("$MODEL", Decompilation.AI_MODEL));
