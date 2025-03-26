@@ -4,8 +4,7 @@ import me.bechberger.meta.runtime.Klass;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -31,6 +30,7 @@ public class Decompilation {
             case JAVA -> decompileClassesToJava(bytecodePerClass);
             case VERBOSE_BYTECODE -> decompileClassesToVerboseBytecode(bytecodePerClass, false);
             case ULTRA_VERBOSE_BYTECODE -> decompileClassesToVerboseBytecode(bytecodePerClass, true);
+            case AI_JAVA -> decompileClassesToJavaWithAI(bytecodePerClass);
         };
     }
 
@@ -56,6 +56,57 @@ public class Decompilation {
             toProcess.removeAll(removeFromProcess);
         }
         return result;
+    }
+
+    /**
+     * Decompiles the given classes to Java using the Fernflower decompiler and then improves the decompilation using the AI model {@value AI_MODEL}
+     * <p/>
+     * Might take some time as it runs locally
+     * @param bytecodePerClass the classes to decompile
+     * @return a map from the classes to their decompiled source code
+     */
+    public static Map<Klass, String> decompileClassesToJavaWithAI(Map<Klass, byte[]> bytecodePerClass) {
+        return improveDecompilationWithAI(decompileClassesToJava(bytecodePerClass));
+    }
+
+    public static final String AI_MODEL = "deepseek-r1:14b";
+    private static final String AI_PROMPT = "please improve the following Java decompilation, only give me the decompiled code and give variables proper names, without explanations. Put the Java code in markdown code block:\n";
+
+    private static Map<Klass, String> improveDecompilationWithAI(Map<Klass, String> decompiledClasses) {
+        // essientially call `ollama run deepseek-r1:14b < input.txt > out.txt` for each klass and record the output
+        // then return the output
+        return decompiledClasses.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> {
+            try {
+                var process = new ProcessBuilder("ollama", "run", AI_MODEL)
+                        .redirectInput(ProcessBuilder.Redirect.PIPE)
+                        .redirectOutput(ProcessBuilder.Redirect.PIPE)
+                        .start();
+                process.getOutputStream().write((AI_PROMPT + e.getValue()).getBytes());
+                process.getOutputStream().close();
+                System.out.println("Running ollama for " + e.getKey().getName());
+                // read the lines, print them and return them
+                var in = new InputStreamReader(new BufferedInputStream(process.getInputStream()));
+                // read lines from the input stream
+                var lines = new ArrayList<String>();
+                var reader = new BufferedReader(in);
+                String line;
+                boolean hasJava = false;
+                while ((line = reader.readLine()) != null) {
+                    System.out.println(line);
+                    if (hasJava) {
+                        lines.add(line);
+                    }
+                    if (line.startsWith("```java")) {
+                        hasJava = true;
+                    } else if (line.startsWith("```")) {
+                        hasJava = false;
+                    }
+                }
+                return String.join("\n", lines);
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+        }));
     }
 
     private static Map<Klass, String> decompileClassesWithoutClassNameDuplicates(

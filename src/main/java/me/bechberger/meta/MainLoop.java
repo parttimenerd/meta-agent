@@ -459,6 +459,7 @@ public class MainLoop {
                                             + combineURL(exchange, newParams)
                                             + "'>"
                                             + m.param
+                                            + (m.description != null ? " (" + m.description + ")" : "")
                                             + "</a>";
                         }).toList();
         params.put("output", "raw");
