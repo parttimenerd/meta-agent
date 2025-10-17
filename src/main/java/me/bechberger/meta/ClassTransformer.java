@@ -24,7 +24,8 @@ import java.util.WeakHashMap;
  * version
  */
 public class ClassTransformer implements ClassFileTransformer {
-    private final ScopedClassPoolFactoryImpl scopedClassPoolFactory =
+  private static final String BYTEBUDDY_AGENT_BUILDER_DEFAULT_DISPATCHER_CLASS_NAME = "net.bytebuddy.agent.builder.AgentBuilder$Default$Dispatcher";
+  private final ScopedClassPoolFactoryImpl scopedClassPoolFactory =
             new ScopedClassPoolFactoryImpl();
 
     private final Set<String> instrumentationCallbackClasses;
@@ -115,7 +116,9 @@ public class ClassTransformer implements ClassFileTransformer {
 
     private boolean isAddTransformerMethod(MethodCall m) {
         return (m.getClassName().equals("java.lang.instrument.Instrumentation")
-                || m.getClassName().equals("java.lang.instrument.InstrumentationImpl"))
+                || m.getClassName().equals("java.lang.instrument.InstrumentationImpl")
+                // ByteBuddy's Dispatcher interface
+                || m.getClassName().equals(BYTEBUDDY_AGENT_BUILDER_DEFAULT_DISPATCHER_CLASS_NAME))
                 && m.getMethodName().equals("addTransformer");
     }
 
@@ -134,7 +137,11 @@ public class ClassTransformer implements ClassFileTransformer {
                         // check the number of arguments
                         int argCount = m.getSignature().contains("Z") ? 2 : 1;
                         // replace
-                        if (argCount == 1) {
+                        if (m.getClassName().equals(BYTEBUDDY_AGENT_BUILDER_DEFAULT_DISPATCHER_CLASS_NAME)) {
+                            // Dispatcher interface method call: addTransformer(Instrumentation, ClassFileTransformer, boolean)
+                            m.replace(
+                                    "me.bechberger.meta.runtime.InstrumentationHandler.addTransformer($1, $2, $3);");
+                        } else if (argCount == 1) {
                             m.replace(
                                     "me.bechberger.meta.runtime.InstrumentationHandler.addTransformer($0, $1);");
                         } else {
