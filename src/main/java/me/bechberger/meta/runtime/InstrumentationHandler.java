@@ -16,16 +16,23 @@ import java.util.stream.Collectors;
  */
 public class InstrumentationHandler {
 
+    private static final Map<String, Instrumentator> instrumentatorCache = new ConcurrentHashMap<>();
     private static final Map<Instrumentator, PerInstrumentator> diffs = new ConcurrentHashMap<>();
     private static final Map<Klass, PerClass> classDiffs = new ConcurrentHashMap<>();
 
     static void addDiff(Instrumentator instrumentator, String name, Class<?> clazz, byte[] old, byte[] current) {
+        instrumentatorCache.put(instrumentator.name(), instrumentator);
         if (Arrays.equals(old, current) || current == null) {
             return;
         }
         Klass klass = new Klass(name, clazz);
         diffs.computeIfAbsent(instrumentator, PerInstrumentator::new).addDiff(klass, old, current);
         classDiffs.computeIfAbsent(klass, c -> new PerClass()).addDiff(instrumentator, klass, old, current);
+    }
+
+    public static void addDiff(String instrumentator, String name, Class<?> clazz, byte[] old, byte[] current) {
+        var instr = instrumentatorCache.computeIfAbsent(instrumentator, Instrumentator::new);
+        addDiff(instr, name, clazz, old, current);
     }
 
     public static Map<Instrumentator, PerInstrumentator> getDiffs() {
