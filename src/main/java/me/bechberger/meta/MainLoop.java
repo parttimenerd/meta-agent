@@ -268,7 +268,7 @@ public class MainLoop {
                         })
                 .collect(Collectors.joining())
                 + "</table>" +
-                "<p>Decompile modes: " + Stream.of(DiffSourceMode.values())
+                "<p>Decompile modes: " + Stream.of(DiffSourceMode.supportedValues())
                 .map(m -> "<code>?mode=" + m.param + "</code>")
                 .collect(Collectors.joining(", ")) + "</p>" +
                 "<p>Get raw version of the output: <code>?output=raw</code></p>" +
@@ -287,7 +287,7 @@ public class MainLoop {
                                     return c.path.stream().map(formatPath).collect(Collectors.joining("\n"));
                                 })
                         .collect(Collectors.joining("\n"));
-        String modeHelp = Stream.of(DiffSourceMode.values())
+        String modeHelp = Stream.of(DiffSourceMode.supportedValues())
                 .map(m -> "?mode=" + m.param)
                 .collect(Collectors.joining(", "));
         String outputHelp = "?output=raw";
@@ -448,7 +448,7 @@ public class MainLoop {
         String url = exchange.getRequestURI().toString();
         Map<String, String> params = getURLParameters(exchange);
         params.remove("mode");
-        List<String> otherModes = Stream.of(DiffSourceMode.values())
+        List<String> otherModes = Stream.of(DiffSourceMode.supportedValues())
                 .filter(m -> m != mode)
                 .map(
                         m -> {
@@ -527,7 +527,7 @@ public class MainLoop {
         if (modeParam == null) {
             return DiffSourceMode.JAVA;
         }
-        return Stream.of(DiffSourceMode.values())
+        return Stream.of(DiffSourceMode.supportedValues())
                 .filter(m -> m.param.equalsIgnoreCase(modeParam))
                 .findFirst()
                 .orElseThrow(
