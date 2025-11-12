@@ -20,19 +20,22 @@ public class InstrumentationHandler {
     private static final Map<Instrumentator, PerInstrumentator> diffs = new ConcurrentHashMap<>();
     private static final Map<Klass, PerClass> classDiffs = new ConcurrentHashMap<>();
 
-    static void addDiff(Instrumentator instrumentator, String name, Class<?> clazz, byte[] old, byte[] current) {
+    static void addDiff(Instrumentator instrumentator, Klass klass, byte[] old, byte[] current) {
         instrumentatorCache.put(instrumentator.name(), instrumentator);
         if (Arrays.equals(old, current) || current == null) {
             return;
         }
-        Klass klass = new Klass(name, clazz);
         diffs.computeIfAbsent(instrumentator, PerInstrumentator::new).addDiff(klass, old, current);
         classDiffs.computeIfAbsent(klass, c -> new PerClass()).addDiff(instrumentator, klass, old, current);
     }
 
-    public static void addDiff(String instrumentator, String name, Class<?> clazz, byte[] old, byte[] current) {
+    static void addDiff(Instrumentator instrumentator, Class<?> clazz, byte[] old, byte[] current) {
+        addDiff(instrumentator, new Klass(clazz), old, current);
+    }
+
+    public static void addDiff(String instrumentator, String clazz, byte[] old, byte[] current) {
         var instr = instrumentatorCache.computeIfAbsent(instrumentator, Instrumentator::new);
-        addDiff(instr, name, clazz, old, current);
+        addDiff(instr, new Klass(clazz), old, current);
     }
 
     public static Map<Instrumentator, PerInstrumentator> getDiffs() {
@@ -89,7 +92,6 @@ public class InstrumentationHandler {
 
                         addDiff(
                                 new Instrumentator(transformer.getClass().getName()),
-                                className,
                                 classBeingRedefined,
                                 old,
                                 current);

@@ -44,3 +44,8 @@ harness-*
 
 src/main/resources
 coverage-example
+
+### Native library files ###
+*.so
+*.dylib
+*.dll

@@ -20,6 +20,7 @@ public class Main {
 
     static class Options {
         boolean server = false;
+        boolean _native = true;
         int port = 7071;
         boolean help = false;
         Set<String> callbackClasses = new HashSet<>();
@@ -31,6 +32,7 @@ public class Main {
     static final List<Option> OPTIONS = List.of(
             new Option("help", "Show this help", false, (o, a) -> o.help = true),
             new Option("server", "Start the server at the passed port (default 7071)", false, (o, a) -> o.server = true),
+            new Option("disable-native", "Don't check for files created by the native wrapper agent", false, (o, a) -> o._native = false),
             new Option("port", "Port to start the server on, default 7071", true, (o, a) -> o.port = Integer.parseInt(a)),
             new Option("cb", "Callback class names, classes have to implement the InstrumentationCallback interface", true, (o, a) -> {
                 o.callbackClasses.add(a);
@@ -87,6 +89,9 @@ public class Main {
         if (options.help) {
             System.out.println(getHelp());
             return;
+        }
+        if (options._native) {
+            NativeWrapperLoop.startThread();
         }
         MainLoop.run(options, inst);
     }

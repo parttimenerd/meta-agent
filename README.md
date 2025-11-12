@@ -3,9 +3,10 @@ Meta-Agent
 
 Who instruments the instrumenter? This project is a Java agent that instruments Java agents,
 or specifically, it instruments the ClassFileTransformers of other agents to observe how they transform
-the bytecode of classes.
+the bytecode of classes and can also capture native agents with the help of its [own](./native).
 
-This is especially useful to check what libraries like [Mockito](https://site.mockito.org/) do to your classes at runtime.
+This is especially useful to check what libraries like [Mockito](https://site.mockito.org/),
+Dynatrace or async-profiler's method trace do to your classes at runtime.
 
 To run it, build the project with `mvn package -DskipTests` and run your Java program with the agent:
 
@@ -42,6 +43,19 @@ public class MockitoTest {
   }
 }
 ```
+
+If you also want to capture native agents, you can build the native part with
+```
+(cd native && make)
+```
+and then run with
+```shell
+# on Mac OS
+java -agentpath:native/native_agent.dylib -javaagent:target/meta-agent.jar=server -jar your-program.jar
+# on Linux
+java -agentpath:native/native_agent.so -javaagent:target/meta-agent.jar=server -jar your-program.jar
+```
+More on this in the [native](native/README.md) README.
 
 Opening [localhost](http://localhost:7071) will show you a list of available commands, most importantly
 - [/help](http://localhost:7071) to show the help, available comands and decompilation and output options
@@ -93,6 +107,7 @@ public class LoggingInstrumentationHandler implements InstrumentationCallback {
 
 The meta-agent can also be used via a [maven plugin](maven-plugin/README.md),
 see the [sample project](maven-plugin-sample/README.md) for an example usage.
+The maven plugin does not yet support the native agent.
 
 How this works
 --------------
