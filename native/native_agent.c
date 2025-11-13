@@ -124,7 +124,7 @@ static void wrapper_handler(int agent_index,
         LOG_ERROR("Invalid agent index: %d\n", agent_index);
         return;
     }
-    
+
     ClassFileLoadHookInfo* info = &agent_info[agent_index];
     
     // Check if this agent should be skipped
@@ -136,9 +136,6 @@ static void wrapper_handler(int agent_index,
     const unsigned char* old_data = class_data;
     jint old_len = class_data_len;
     
-    LOG_VERBOSE("[NATIVE_AGENT] Agent %s (index=%d) processing class: %s\n",
-                info->name, agent_index, name ? name : "NULL");
-    
     // Call the original agent's callback
     if (info->callback != NULL) {
         info->callback(jvmti, jni, class_being_redefined, loader, name,
@@ -147,7 +144,14 @@ static void wrapper_handler(int agent_index,
         
         // Write diff if transformation occurred or always_file is set
         if (new_class_data != NULL && *new_class_data != NULL && 
-            new_class_data_len != NULL && *new_class_data_len > 0) {
+            new_class_data_len != NULL && *new_class_data_len > 0 &&
+            (*new_class_data_len != old_len || memcmp(old_data, *new_class_data, old_len) != 0)) {
+            printf("[NATIVE_AGENT] Agent %s transformed class %s (old_len=%d, new_len=%d)\n",
+                   info->name, name ? name : "NULL", old_len, *new_class_data_len);
+            if (0) {
+                LOG_VERBOSE("[NATIVE_AGENT] No actual changes detected for class %s by agent %s\n",
+                            name ? name : "NULL", info->name);
+            }
             write_transformation_to_file(info->name, name, old_data, old_len, 
                                         *new_class_data, *new_class_data_len);
         } else if (always_file) {
@@ -590,17 +594,15 @@ jvmtiError SetEventCallbacks(jvmtiEnv* env, const jvmtiEventCallbacks* callbacks
     if (dlinfo.dli_fname) {
         extract_agent_name(info->name, sizeof(info->name), dlinfo.dli_fname);
     }
-    
+
     next_agent_slot++;
     LOG_NORMAL("[NATIVE_AGENT] Registered agent %s at index %d (total: %d)\n",
                info->name, agent_index, next_agent_slot);
     
     // Register the pre-generated wrapper function for this agent
-    jvmtiEventCallbacks new_callbacks;
-    memset(&new_callbacks, 0, sizeof(new_callbacks));
-    new_callbacks.ClassFileLoadHook = (jvmtiEventClassFileLoadHook)wrapper_functions[agent_index];
-    
-    jvmtiError result = original_SetEventCallbacks(env, &new_callbacks, sizeof(new_callbacks));
+    *((jvmtiEventClassFileLoadHook*)&(callbacks->ClassFileLoadHook)) = (jvmtiEventClassFileLoadHook)wrapper_functions[agent_index];
+
+    jvmtiError result = original_SetEventCallbacks(env, callbacks, size_of_callbacks);
     
     if (result == JVMTI_ERROR_NONE) {
         LOG_NORMAL("[NATIVE_AGENT] Successfully registered wrapper_%d for agent %s\n",
@@ -610,7 +612,6 @@ jvmtiError SetEventCallbacks(jvmtiEnv* env, const jvmtiEventCallbacks* callbacks
                   info->name, result);
         next_agent_slot--;  // Roll back on failure
     }
-    
     return result;
 }
 
