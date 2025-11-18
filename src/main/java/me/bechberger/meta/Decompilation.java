@@ -51,8 +51,8 @@ public class Decompilation {
                 if (i >= classes.size() - 1) {
                     removeFromProcess.add(className);
                 }
-                result.putAll(decompileClassesWithoutClassNameDuplicates(bytecodePerClassForPackage));
             }
+            result.putAll(decompileClassesWithoutClassNameDuplicates(bytecodePerClassForPackage));
             toProcess.removeAll(removeFromProcess);
         }
         return result;
