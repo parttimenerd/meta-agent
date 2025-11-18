@@ -1,0 +1,9 @@
+{
+  "catalogs": {},
+  "aliases": {
+    "meta-agent": {
+      "script-ref": "http://github.com/parttimenerd/meta-agent/releases/latest/download/meta-agent.jar"
+    }
+  },
+  "templates": {}
+}

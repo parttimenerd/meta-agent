@@ -59,7 +59,6 @@ public class MainLoop {
             try {
                 inst.retransformClasses(clazz);
             } catch (UnmodifiableClassException e) {
-                //System.out.println("Can't modify class " + clazz);
             } catch (Exception e) {
                 e.printStackTrace();
             }
