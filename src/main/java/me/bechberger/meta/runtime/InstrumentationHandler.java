@@ -29,10 +29,6 @@ public class InstrumentationHandler {
         classDiffs.computeIfAbsent(klass, c -> new PerClass()).addDiff(instrumentator, klass, old, current);
     }
 
-    static void addDiff(Instrumentator instrumentator, Class<?> clazz, byte[] old, byte[] current) {
-        addDiff(instrumentator, new Klass(clazz), old, current);
-    }
-
     public static void addDiff(String instrumentator, String clazz, byte[] old, byte[] current) {
         var instr = instrumentatorCache.computeIfAbsent(instrumentator, Instrumentator::new);
         addDiff(instr, new Klass(clazz), old, current);
@@ -92,7 +88,7 @@ public class InstrumentationHandler {
 
                         addDiff(
                                 new Instrumentator(transformer.getClass().getName()),
-                                classBeingRedefined,
+                                new Klass(className, classBeingRedefined),
                                 old,
                                 current);
                         return current;
