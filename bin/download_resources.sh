@@ -26,12 +26,14 @@ for resource in "${!resources[@]}"; do
     url="${resources[$resource]}"
     target_file="$RESOURCES_FOLDER/$resource"
 
-    echo "Downloading $resource from $url to $target_file"
+    if ! [ -f "$target_file" ]; then
+      echo "Downloading $resource from $url to $target_file"
 
-    # Use curl to download (with -f to fail on HTTP errors, -L to follow redirects, -s for silent mode with -S to show errors)
-    if ! curl -fsSL "$url" -o "$target_file"; then
-        echo "Error: Failed to download $resource from $url" >&2
-        exit 1
+      # Use curl to download (with -f to fail on HTTP errors, -L to follow redirects, -s for silent mode with -S to show errors)
+      if ! curl -fsSL "$url" -o "$target_file"; then
+          echo "Error: Failed to download $resource from $url" >&2
+          exit 1
+      fi
     fi
 done
 
