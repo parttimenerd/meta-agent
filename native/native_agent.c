@@ -23,6 +23,8 @@
  * - Binary data: new_len bytes of transformed class data
  */
 
+#define _GNU_SOURCE
+
 #include <jvmti.h>
 #include <jni.h>
 #include <stdbool.h>
@@ -521,8 +523,16 @@ static void write_transformation_to_file(const char* agent_name, const char* cla
     int current_counter = __sync_fetch_and_add(&file_counter, 1);
     
     // Build file paths - temp file goes in separate temp directory
-    snprintf(filepath, sizeof(filepath), "%s/%d", comm_dir, current_counter);
-    snprintf(temp_filepath, sizeof(temp_filepath), "%s/%d", temp_dir, current_counter);
+    int written = snprintf(filepath, sizeof(filepath), "%s/%d", comm_dir, current_counter);
+    if (written < 0 || written >= (int)sizeof(filepath)) {
+        LOG_ERROR("Failed to format filepath (truncated)\n");
+        return;
+    }
+    written = snprintf(temp_filepath, sizeof(temp_filepath), "%s/%d", temp_dir, current_counter);
+    if (written < 0 || written >= (int)sizeof(temp_filepath)) {
+        LOG_ERROR("Failed to format temp_filepath (truncated)\n");
+        return;
+    }
 
     LOG_VERBOSE("[NATIVE_AGENT] Writing transformation to temp file: %s (agent=%s, class=%s)\n",
                 temp_filepath, agent_name ? agent_name : "unknown", class_name ? class_name : "NULL");
