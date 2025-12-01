@@ -1,6 +1,8 @@
 Meta-Agent
 ==========
 
+[![CI Build](https://github.com/parttimenerd/meta-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/parttimenerd/meta-agent/actions/workflows/ci.yml)
+
 Who instruments the instrumenter? This project is a Java agent that instruments Java agents,
 or specifically, it instruments the ClassFileTransformers of other agents to observe how they transform
 the bytecode of classes and can also capture native agents with the help of its [own](./native).
