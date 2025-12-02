@@ -35,6 +35,12 @@ body {
   font-size: 1.5rem;
   font-weight: bold;
   letter-spacing: -0.5px;
+  text-decoration: none;
+  color: white;
+}
+
+.nav-header .title:hover {
+  text-decoration: underline;
 }
 
 .nav-header .subtitle {

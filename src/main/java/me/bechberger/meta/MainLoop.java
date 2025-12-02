@@ -170,7 +170,7 @@ public class MainLoop {
                    <script src="/file/diff2html.js"></script>
                 </head>
                 <body>
-                """ + NavigationUtils.getNavigationHeader(currentPath, serverPort) + """
+                """ + NavigationUtils.getNavigationHeader(currentPath) + """
                 <div class="main-content">
                 """;
     }

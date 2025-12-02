@@ -17,29 +17,27 @@ public class NavigationUtils {
     /**
      * Get the main navigation header that appears on every page
      * @param currentPath The current request path
-     * @param port The server port
      * @return HTML for the navigation header
      */
-    public static String getNavigationHeader(String currentPath, int port) {
-        // Determine which nav link is active based on current path
-        String homeClass = currentPath.equals("/") || currentPath.equals("/help") ? " class='active'" : "";
-        String instrumentatorsClass = currentPath.startsWith("/instrumentators") || currentPath.contains("/instrumentator") ? " class='active'" : "";
-        String classesClass = (currentPath.startsWith("/classes") || currentPath.startsWith("/diff/class") ||
-                               currentPath.startsWith("/full-diff/class") || currentPath.startsWith("/decompile")) &&
-                              !currentPath.startsWith("/all/") ? " class='active'" : "";
-        String allClassesClass = currentPath.startsWith("/all/") ? " class='active'" : "";
+    public static String getNavigationHeader(String currentPath) {
+        // Map navigation items to their active states
+        Map<String, Boolean> navStates = Map.of(
+            "HOME_CLASS", isActive(currentPath, "/", "/help"),
+            "INSTRS_CLASS", isInstrumentatorsActive(currentPath),
+            "CLASSES_CLASS", isClassesActive(currentPath),
+            "ALL_CLASSES_CLASS", currentPath.startsWith("/all/")
+        );
 
-        return """
+        String template = """
             <nav class="nav-header">
                 <div class="nav-left">
-                    <span class="title">Meta-Agent</span>
+                    <a href="/" class="title">Meta-Agent</a>
                     <span class="subtitle">Bytecode Instrumentation Inspector</span>
                 </div>
                 <div class="nav-links">
-                    <a href="/"$HOME_CLASS$>Home</a>
-                    <a href="/instrumentators"$INSTRS_CLASS$>Instrumentators</a>
-                    <a href="/classes"$CLASSES_CLASS$>Classes</a>
-                    <a href="/all/classes"$ALL_CLASSES_CLASS$>All Classes</a>
+                    <a href="/instrumentators" $INSTRS_CLASS$>Instrumentators</a>
+                    <a href="/classes" $CLASSES_CLASS$>Classes</a>
+                    <a href="/all/classes" $ALL_CLASSES_CLASS$>All Classes</a>
                 </div>
                 <div class="nav-right">
                     <span class="meta-info">
@@ -47,12 +45,13 @@ public class NavigationUtils {
                     </span>
                 </div>
             </nav>
-            """
-            .replace("$HOME_CLASS$", homeClass)
-            .replace("$INSTRS_CLASS$", instrumentatorsClass)
-            .replace("$CLASSES_CLASS$", classesClass)
-            .replace("$ALL_CLASSES_CLASS$", allClassesClass)
-            .replace("$PORT$", String.valueOf(port));
+            """;
+
+        String result = template;
+        for (Map.Entry<String, Boolean> entry : navStates.entrySet()) {
+            result = result.replace("$" + entry.getKey() + "$", getActiveClass(entry.getValue()));
+        }
+        return result;
     }
 
     /**
@@ -67,59 +66,44 @@ public class NavigationUtils {
 
         StringBuilder breadcrumbs = new StringBuilder();
         breadcrumbs.append("<div class='breadcrumbs'>");
-        breadcrumbs.append("<a href='/'>Home</a>");
 
         // Parse the path to build breadcrumb trail
-        if (path.startsWith("/instrumentators") || path.contains("/instrumentator")) {
-            breadcrumbs.append("<span class='separator'>›</span>");
-            breadcrumbs.append("<a href='/instrumentators'>Instrumentators</a>");
-
+        if (isInstrumentatorsPath(path)) {
+            appendBreadcrumb(breadcrumbs, "/instrumentators", "Instrumentators");
             if (params.containsKey("pattern")) {
-                breadcrumbs.append("<span class='separator'>›</span>");
-                breadcrumbs.append("<span class='current'>").append(escapeHtml(params.get("pattern"))).append("</span>");
+                appendBreadcrumb(breadcrumbs, null, escapeHtml(params.get("pattern")), "current");
             }
-
             if (path.contains("/diff/")) {
-                breadcrumbs.append("<span class='separator'>›</span>");
-                breadcrumbs.append("<span class='current'>Diffs</span>");
+                appendBreadcrumb(breadcrumbs, null, "Diffs", "current");
             }
-        } else if (path.startsWith("/classes") || path.startsWith("/all/classes")) {
-            breadcrumbs.append("<span class='separator'>›</span>");
+        } else if (isClassesPath(path)) {
             boolean all = path.startsWith("/all/");
             String classesLink = all ? "/all/classes" : "/classes";
             String classesLabel = all ? "All Classes" : "Classes";
-            breadcrumbs.append("<a href='").append(classesLink).append("'>").append(classesLabel).append("</a>");
+            appendBreadcrumb(breadcrumbs, classesLink, classesLabel);
 
             if (params.containsKey("pattern")) {
-                breadcrumbs.append("<span class='separator'>›</span>");
-                breadcrumbs.append("<span class='current'>").append(escapeHtml(params.get("pattern"))).append("</span>");
+                appendBreadcrumb(breadcrumbs, null, escapeHtml(params.get("pattern")), "current");
             }
-        } else if (path.contains("/diff/class") || path.contains("/full-diff/class")) {
-            breadcrumbs.append("<span class='separator'>›</span>");
-            breadcrumbs.append("<a href='/classes'>Classes</a>");
+        } else if (isDiffPath(path)) {
+            appendBreadcrumb(breadcrumbs, "/classes", "Classes");
 
             if (params.containsKey("pattern")) {
-                breadcrumbs.append("<span class='separator'>›</span>");
-                breadcrumbs.append("<span class='current'>").append(escapeHtml(params.get("pattern"))).append("</span>");
+                appendBreadcrumb(breadcrumbs, null, escapeHtml(params.get("pattern")), "current");
             }
-
-            breadcrumbs.append("<span class='separator'>›</span>");
-            breadcrumbs.append("<span class='current'>Diffs</span>");
-        } else if (path.startsWith("/decompile") || path.startsWith("/all/decompile")) {
-            breadcrumbs.append("<span class='separator'>›</span>");
-            breadcrumbs.append("<span class='current'>Decompile</span>");
+            appendBreadcrumb(breadcrumbs, null, "Diffs", "current");
+        } else if (isDecompilePath(path)) {
+            appendBreadcrumb(breadcrumbs, null, "Decompile", "current");
 
             if (params.containsKey("pattern")) {
-                breadcrumbs.append("<span class='separator'>›</span>");
-                breadcrumbs.append("<span class='current'>").append(escapeHtml(params.get("pattern"))).append("</span>");
+                appendBreadcrumb(breadcrumbs, null, escapeHtml(params.get("pattern")), "current");
             }
         }
 
         // Add any additional context
         for (String context : additionalContext) {
             if (context != null && !context.isEmpty()) {
-                breadcrumbs.append("<span class='separator'>›</span>");
-                breadcrumbs.append("<span class='context'>").append(escapeHtml(context)).append("</span>");
+                appendBreadcrumb(breadcrumbs, null, escapeHtml(context), "context");
             }
         }
 
@@ -128,12 +112,48 @@ public class NavigationUtils {
     }
 
     /**
-     * Get context bar showing current filter and quick actions
-     * @param exchange The HTTP exchange
-     * @param resultCount Number of results (use -1 to skip displaying count)
-     * @param actions Quick action buttons (as key-value pairs: "label:url")
-     * @return HTML for context bar
+     * Append a breadcrumb item to the breadcrumb trail
      */
+    private static void appendBreadcrumb(StringBuilder sb, String href, String label) {
+        appendBreadcrumb(sb, href, label, null);
+    }
+
+    /**
+     * Append a breadcrumb item to the breadcrumb trail with optional CSS class
+     */
+    private static void appendBreadcrumb(StringBuilder sb, String href, String label, String cssClass) {
+        sb.append("<span class='separator'>›</span>");
+        if (href != null) {
+            sb.append("<a href='").append(href).append("'>");
+        }
+        if (cssClass != null) {
+            sb.append("<span class='").append(cssClass).append("'>");
+        }
+        sb.append(label);
+        if (cssClass != null) {
+            sb.append("</span>");
+        }
+        if (href != null) {
+            sb.append("</a>");
+        }
+    }
+
+    private static boolean isInstrumentatorsPath(String path) {
+        return path.startsWith("/instrumentators") || path.contains("/instrumentator");
+    }
+
+    private static boolean isClassesPath(String path) {
+        return path.startsWith("/classes") || path.startsWith("/all/classes");
+    }
+
+    private static boolean isDiffPath(String path) {
+        return path.contains("/diff/class") || path.contains("/full-diff/class");
+    }
+
+    private static boolean isDecompilePath(String path) {
+        return path.startsWith("/decompile") || path.startsWith("/all/decompile");
+    }
+
     public static String getContextBar(HttpExchange exchange, int resultCount, List<Action> actions) {
         return getContextBar(exchange, resultCount, null, actions);
     }
@@ -147,47 +167,44 @@ public class NavigationUtils {
      * @return HTML for context bar
      */
     public static String getContextBar(HttpExchange exchange, int resultCount, String customElement, List<Action> actions) {
+        String filterDesc = getActiveFilterDescription(exchange);
+
         StringBuilder contextBar = new StringBuilder();
         contextBar.append("<div class='context-bar'>");
 
         // Left side: filter info
         contextBar.append("<div class='filter-info'>");
-
-        String filterDesc = getActiveFilterDescription(exchange);
         if (resultCount >= 0) {
-            contextBar.append("Showing <strong>").append(resultCount).append("</strong> ");
-            contextBar.append(resultCount == 1 ? "result" : "results");
+            contextBar.append("Showing <strong>").append(resultCount).append("</strong> ")
+                      .append(resultCount == 1 ? "result" : "results");
             if (!filterDesc.isEmpty()) {
                 contextBar.append(" matching ");
             }
         }
-
-        if (!filterDesc.isEmpty()) {
-            contextBar.append(filterDesc);
-        }
-
+        contextBar.append(filterDesc);
         contextBar.append("</div>");
 
         // Right side: custom element and quick actions
         contextBar.append("<div class='quick-actions'>");
-
-        // Add custom element if provided
         if (customElement != null && !customElement.isEmpty()) {
             contextBar.append(customElement);
         }
 
-      // Add action buttons
-      for (Action action : actions) {
-        contextBar.append("<a href='")
-            .append(action.url)
-            .append("'>")
-            .append(action.label)
-            .append("</a>");
-      }
+        // Add action buttons
+        for (Action action : actions) {
+            appendActionButton(contextBar, action);
+        }
 
         contextBar.append("</div>");
         contextBar.append("</div>");
         return contextBar.toString();
+    }
+
+    /**
+     * Append an action button to the context bar
+     */
+    private static void appendActionButton(StringBuilder sb, Action action) {
+        sb.append("<a href='").append(action.url).append("'>").append(action.label).append("</a>");
     }
 
     /**
@@ -229,27 +246,35 @@ public class NavigationUtils {
      * @return List of action
      */
     public static List<Action> buildQuickActions(String currentPath, Map<String, String> params) {
-      List<Action> quickActions = new ArrayList<>();
+        List<Action> quickActions = new ArrayList<>();
 
         // Build clear filter link
         if (params.containsKey("pattern")) {
-          quickActions.add(new Action("Clear Filter", currentPath.split("\\?")[0]));
+            quickActions.add(new Action("Clear Filter", currentPath.split("\\?")[0]));
         }
 
         // Build view all link (context-dependent)
         if (currentPath.startsWith("/classes") && !currentPath.startsWith("/all/")) {
-          quickActions.add(new Action("View All Classes", "/all/classes"));
+            quickActions.add(new Action("View All Classes", "/all/classes"));
         }
 
         // Build raw output link
-        Map<String, String> rawParams = new HashMap<>(params);
-        rawParams.put("output", "raw");
-        String rawUrl = currentPath.split("\\?")[0] + "?" + rawParams.entrySet().stream()
-            .map(e -> e.getKey() + "=" + e.getValue())
-            .collect(joining("&"));
-        quickActions.add(new Action("Raw Output", rawUrl));
+        quickActions.add(new Action("Raw Output", buildUrlWithParam(currentPath, params, "output", "raw")));
 
         return quickActions;
+    }
+
+    /**
+     * Build a URL with an additional or modified parameter
+     */
+    private static String buildUrlWithParam(String currentPath, Map<String, String> params, String paramKey, String paramValue) {
+        Map<String, String> newParams = new HashMap<>(params);
+        newParams.put(paramKey, paramValue);
+        String basePath = currentPath.split("\\?")[0];
+        String queryString = newParams.entrySet().stream()
+            .map(e -> e.getKey() + "=" + e.getValue())
+            .collect(joining("&"));
+        return basePath + (queryString.isEmpty() ? "" : "?" + queryString);
     }
 
     /**
@@ -275,5 +300,48 @@ public class NavigationUtils {
                    .replace(">", "&gt;")
                    .replace("\"", "&quot;")
                    .replace("'", "&#39;");
+    }
+
+    /**
+     * Convert a boolean active state to an HTML class attribute
+     * @param isActive whether the navigation item is active
+     * @return " class='active'" if active, empty string otherwise
+     */
+    private static String getActiveClass(boolean isActive) {
+        return isActive ? " class='active'" : "";
+    }
+
+    /**
+     * Check if the current path matches any of the provided exact or prefix paths
+     */
+    private static boolean isActive(String currentPath, String... paths) {
+        for (String path : paths) {
+            if (currentPath.equals(path) || currentPath.startsWith(path)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Determine if the Instrumentators nav item should be active.
+     * Active for paths starting with /instrumentators or containing /instrumentator
+     */
+    private static boolean isInstrumentatorsActive(String currentPath) {
+        return currentPath.startsWith("/instrumentators") || currentPath.contains("/instrumentator");
+    }
+
+    /**
+     * Determine if the Classes nav item should be active.
+     * Active for /classes, /diff/class, /full-diff/class, /decompile, but NOT for /all/
+     */
+    private static boolean isClassesActive(String currentPath) {
+        if (currentPath.startsWith("/all/")) {
+            return false;
+        }
+        return currentPath.startsWith("/classes")
+            || currentPath.startsWith("/diff/class")
+            || currentPath.startsWith("/full-diff/class")
+            || currentPath.startsWith("/decompile");
     }
 }
