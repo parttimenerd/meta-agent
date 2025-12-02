@@ -138,6 +138,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install timeout on macOS
+      if: runner.os == 'macOS'
+      run: brew install coreutils
+
     - name: Set up JDK ${{ matrix.java-version }}
       uses: actions/setup-java@v4
       with:
@@ -150,8 +154,14 @@ jobs:
 
     - name: Run tests with agent and verify server
       run: |
+        # Use gtimeout on macOS, timeout on Linux
+        TIMEOUT_CMD="timeout"
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          TIMEOUT_CMD="gtimeout"
+        fi
+        
         # Start Maven tests with agent in background with timeout
-        timeout 30 mvn test -DargLine="-javaagent:target/meta-agent.jar=server" &
+        $TIMEOUT_CMD 30 mvn test -DargLine="-javaagent:target/meta-agent.jar=server" &
         TEST_PID=$!
         
         # Wait for server to start
