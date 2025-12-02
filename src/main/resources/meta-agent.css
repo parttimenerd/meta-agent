@@ -1,0 +1,348 @@
+/* Reset and base styles */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  color: #333;
+  background: #f5f5f5;
+}
+
+/* Apply line-height only to main content areas, not code blocks */
+.nav-header, .breadcrumbs, .context-bar, .main-content > h1,
+.main-content > h2, .main-content > p{
+  line-height: 1.6;
+}
+
+/* Navigation Header */
+.nav-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.nav-header .nav-left {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.nav-header .title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  letter-spacing: -0.5px;
+}
+
+.nav-header .subtitle {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.nav-header .nav-links {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nav-header .nav-links a {
+  color: white;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.nav-header .nav-links a:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.nav-header .nav-links a.active {
+  background: rgba(255,255,255,0.25);
+  font-weight: 600;
+}
+
+.nav-header .nav-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.85rem;
+}
+
+.nav-header .meta-info {
+  opacity: 0.95;
+}
+
+.nav-header .meta-info a {
+  color: white;
+  text-decoration: none;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 6px;
+  transition: all 0.2s;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.nav-header .meta-info a:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.6);
+}
+
+/* Breadcrumbs */
+.breadcrumbs {
+  background: white;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 0.9rem;
+}
+
+.breadcrumbs a {
+  color: #667eea;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.breadcrumbs a:hover {
+  color: #764ba2;
+  text-decoration: underline;
+}
+
+.breadcrumbs .separator {
+  margin: 0 0.5rem;
+  color: #999;
+}
+
+.breadcrumbs .current {
+  color: #333;
+  font-weight: 600;
+}
+
+.breadcrumbs .context {
+  color: #666;
+  font-style: italic;
+}
+
+/* Context Bar */
+.context-bar {
+  background: white;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.context-bar .filter-info {
+  color: #666;
+}
+
+.context-bar .filter-pattern,
+.breadcrumbs .filter-pattern {
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  background: #f0f0f0;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-weight: 600;
+  color: #d63384;
+  font-size: 0.95em;
+}
+
+.context-bar .quick-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.context-bar .quick-actions a {
+  padding: 0.4rem 0.9rem;
+  background: #667eea;
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.context-bar .quick-actions a:hover {
+  background: #764ba2;
+}
+
+.context-bar .quick-actions a.active {
+  background: #2c3e50;
+  font-weight: 600;
+  cursor: default;
+}
+
+.context-bar .quick-actions a.active:hover {
+  background: #2c3e50;
+}
+
+/* Main Content Area */
+.main-content {
+  padding: 2rem 1.5rem;
+  max-width: 100%;
+  margin: 0;
+  background: white;
+  min-height: calc(100vh - 200px);
+}
+
+/* Typography */
+h1 {
+  margin: 0 0 1.5rem 0;
+  color: #2c3e50;
+  border-bottom: 3px solid #667eea;
+  padding-bottom: 0.5rem;
+  font-size: 1.75rem;
+}
+
+h2 {
+  margin: 1.5rem 0 1rem 0;
+  color: #34495e;
+  font-size: 1.35rem;
+}
+
+/* Lists - only style direct children of main-content, not diff lists */
+.main-content > ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.main-content > ul > li {
+  padding: 0.35rem 1rem;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
+
+.main-content > ul > li:hover {
+  background: #f8f9fa;
+}
+
+.main-content > ul > li a {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.main-content > ul > li a:hover {
+  text-decoration: underline;
+}
+
+/* Tables - only style direct tables in main-content, not diff tables */
+.main-content > table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.main-content > table th {
+  background: #f8f9fa;
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.main-content > table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.main-content > table tr:hover {
+  background: #f8f9fa;
+}
+
+/* Code blocks - only style direct pre/code in main-content, not diff code */
+.main-content > pre {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.main-content > h2 + pre {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+/* Form elements */
+select {
+  margin-bottom: 1em;
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+select:hover {
+  border-color: #667eea;
+}
+
+select:focus {
+  outline: none;
+  border-color: #764ba2;
+}
+
+/* Mode selector in context bar */
+.quick-actions label {
+  color: #333;
+  font-weight: 500;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.quick-actions select {
+  margin: 0 0.5rem 0 0.25rem;
+  padding: 0.4rem 2rem 0.4rem 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  vertical-align: middle;
+}
+
+.quick-actions select:hover {
+  border-color: #667eea;
+}
+
+.quick-actions select:focus {
+  outline: none;
+  border-color: #764ba2;
+}
+
+/* Links */
+a {
+  color: #667eea;
+}
+
+a:hover {
+  color: #764ba2;
+}
+
+/* Utility classes */
+.text-muted {
+  color: #6c757d;
+}
+
+strong {
+  font-weight: 600;
+  color: #2c3e50;
+}

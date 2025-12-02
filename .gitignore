@@ -42,7 +42,13 @@ build/
 harness-*
 .idea
 
-src/main/resources
+### Third party dependencies
+src/main/resources/diff2html.css
+src/main/resources/diff2html.js
+src/main/resources/highlight.css
+src/main/resources/highlight.java.js
+src/main/resources/highlight.js
+
 coverage-example
 
 ### Native library files ###
