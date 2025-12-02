@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, macos-13]
+        os: [ubuntu-latest, macos-latest]
         include:
           - os: ubuntu-latest
             platform: linux-x64
@@ -46,11 +46,7 @@ jobs:
             platform: macos-arm64
             lib_ext: dylib
             lib_prefix: lib
-          - os: macos-13
-            platform: macos-x64
-            lib_ext: dylib
-            lib_prefix: lib
-    
+
     runs-on: ${{ matrix.os }}
     
     steps:
@@ -89,16 +85,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, macos-13]
+        os: [ubuntu-latest, macos-latest]
         java-version: ['21', '25']
         include:
           - os: ubuntu-latest
             platform: linux-x64
           - os: macos-latest
             platform: macos-arm64
-          - os: macos-13
-            platform: macos-x64
-    
+
     runs-on: ${{ matrix.os }}
     needs: build-java
     
@@ -130,15 +124,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, macos-13]
+        os: [ubuntu-latest, macos-latest]
         java-version: ['21', '25']
         include:
           - os: ubuntu-latest
             platform: linux-x64
           - os: macos-latest
             platform: macos-arm64
-          - os: macos-13
-            platform: macos-x64
 
     runs-on: ${{ matrix.os }}
     needs: build-java
