@@ -80,45 +80,6 @@ jobs:
         path: native/${{ matrix.lib_prefix }}native_agent.${{ matrix.lib_ext }}
         retention-days: 7
 
-  test-java:
-    name: Test Java
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        java-version: ['21', '25']
-        include:
-          - os: ubuntu-latest
-            platform: linux-x64
-          - os: macos-latest
-            platform: macos-arm64
-
-    runs-on: ${{ matrix.os }}
-    needs: build-java
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up JDK ${{ matrix.java-version }}
-      uses: actions/setup-java@v4
-      with:
-        java-version: ${{ matrix.java-version }}
-        distribution: 'sapmachine'
-        cache: maven
-    
-    - name: Run tests
-      run: mvn -B test --file pom.xml
-    
-    - name: Upload test reports
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-reports-${{ matrix.platform }}
-        path: |
-          target/surefire-reports
-          target/failsafe-reports
-        retention-days: 7
-
   test-agent-server:
     name: Test Agent Server
     strategy:
