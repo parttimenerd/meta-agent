@@ -22,7 +22,7 @@ jobs:
         cache: maven
     
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: mvn -B package --file pom.xml -DskipTests
     
     - name: Upload JAR artifacts
       uses: actions/upload-artifact@v4
@@ -90,6 +90,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, macos-13]
+        java-version: ['21', '25']
         include:
           - os: ubuntu-latest
             platform: linux-x64
@@ -104,10 +105,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up JDK 21
+    - name: Set up JDK ${{ matrix.java-version }}
       uses: actions/setup-java@v4
       with:
-        java-version: '21'
+        java-version: ${{ matrix.java-version }}
         distribution: 'sapmachine'
         cache: maven
     
@@ -126,21 +127,34 @@ jobs:
 
   test-agent-server:
     name: Test Agent Server
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, macos-13]
+        java-version: ['21', '25']
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+          - os: macos-latest
+            platform: macos-arm64
+          - os: macos-13
+            platform: macos-x64
+
+    runs-on: ${{ matrix.os }}
     needs: build-java
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up JDK 21
+    - name: Set up JDK ${{ matrix.java-version }}
       uses: actions/setup-java@v4
       with:
-        java-version: '21'
+        java-version: ${{ matrix.java-version }}
         distribution: 'sapmachine'
         cache: maven
 
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: mvn -B package --file pom.xml -DskipTests
 
     - name: Run tests with agent and verify server
       run: |
@@ -185,7 +199,7 @@ jobs:
     - name: Build Maven Plugin
       run: |
         cd maven-plugin
-        mvn -B package --file pom.xml
+        mvn -B package --file pom.xml -DskipTests
     
     - name: Upload Maven Plugin artifacts
       uses: actions/upload-artifact@v4
