@@ -131,6 +131,10 @@ jobs:
         # Call the server and check for <body> in response
         RESPONSE=$(curl -s http://localhost:7071 || echo "")
         
+        # Query the instrumentators endpoint with raw output
+        RESPONSE2=$(curl -s "http://localhost:7071/instrumentators?output=raw" || echo "")
+
+        
         # Kill the Maven process if still running
         kill $TEST_PID 2>/dev/null || true
         wait $TEST_PID 2>/dev/null || true
@@ -142,6 +146,14 @@ jobs:
         else
           echo "✗ Server response did not contain <body>"
           echo "Response was: $RESPONSE"
+          exit 1
+        fi
+        if echo "$RESPONSE2" | grep -q "org.mockito.internal.creation.bytebuddy.InlineBytecodeGenerator"; then
+          echo "✓ Instrumentators endpoint returned expected data"
+          exit 0
+        else
+          echo "✗ Instrumentators endpoint did not return expected data"
+          echo "Response was: $RESPONSE2"
           exit 1
         fi
 
