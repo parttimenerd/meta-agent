@@ -6,6 +6,7 @@ import com.sun.net.httpserver.HttpServer;
 import me.bechberger.meta.NavigationUtils.Action;
 import me.bechberger.meta.runtime.InstrumentationHandler;
 import me.bechberger.meta.runtime.Klass;
+import me.bechberger.meta.runtime.Options;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -38,7 +39,7 @@ public class MainLoop {
     private static Instrumentation inst;
     private static int serverPort = 7071; // Track server port for navigation
 
-    static void run(Main.Options options, Instrumentation inst) {
+    static void run(Options options, Instrumentation inst) {
         serverPort = options.port;
         inst.addTransformer(new ClassTransformer(options.callbackClasses), true);
         MainLoop.inst = inst;
@@ -48,7 +49,7 @@ public class MainLoop {
         if (options.server) {
             Thread thread =
                     new Thread(
-                            () -> runServer(options.port));
+                            () -> runServer(serverPort));
             thread.setDaemon(true);
             thread.start();
         }

@@ -1,5 +1,7 @@
 package me.bechberger.meta;
 
+import me.bechberger.meta.runtime.Options;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,14 +19,6 @@ import java.util.jar.JarFile;
 public class Main {
 
     private static Instrumentation inst;
-
-    static class Options {
-        boolean server = false;
-        boolean _native = true;
-        int port = 7071;
-        boolean help = false;
-        Set<String> callbackClasses = new HashSet<>();
-    }
 
     record Option(String name, String description, boolean hasArgument, BiConsumer<Options, String> process) {
     }
