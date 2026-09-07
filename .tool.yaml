@@ -1,0 +1,136 @@
+tag: experimental
+maven_coordinates: me.bechberger:meta-agent
+tagline: Java agent that instruments other Java agents — wraps every ClassFileTransformer it finds
+  and records bytecode diffs viewable via a built-in web UI. Shows exactly what Mockito, Dynatrace,
+  async-profiler, or any other agent does to your classes at runtime.
+tagline_short: Instrument your Java agents — record and diff the bytecode transformations they apply.
+when_to_use:
+- You want to see exactly what bytecode transformations a Java agent (Mockito, Dynatrace, async-profiler) applies
+- You are debugging unexpected behaviour caused by another agent's class instrumentation
+- You want to intercept or block specific ClassFileTransformer registrations at runtime
+when_not_to_use:
+- You only want to view class bytecode without running another agent — use a decompiler instead
+install:
+- label: Build from source
+  lang: bash
+  code: |
+    git clone https://github.com/parttimenerd/meta-agent
+    cd meta-agent
+    mvn package -DskipTests
+    # JAR: target/meta-agent.jar
+- label: Maven plugin (for tests)
+  lang: xml
+  code: |
+    <plugin>
+      <groupId>me.bechberger</groupId>
+      <artifactId>meta-agent-maven-plugin</artifactId>
+      <version>VERSION</version>
+      <executions>
+        <execution>
+          <phase>validate</phase>
+          <goals><goal>meta-agent</goal></goals>
+        </execution>
+      </executions>
+      <configuration>
+        <server>true</server>
+      </configuration>
+    </plugin>
+usage:
+- label: Run with agent
+  lang: bash
+  code: |
+    java -javaagent:target/meta-agent.jar=server -jar your-program.jar
+    # open http://localhost:7071 to browse transformations
+how_to:
+- title: View what an agent does to your classes
+  body: |
+    Attach meta-agent alongside the agent you want to inspect. Open the built-in web UI to browse
+    decompiled bytecode diffs grouped by transformer or by class:
+    ```bash
+    java -javaagent:target/meta-agent.jar=server -jar your-program.jar
+    # custom port:
+    java -javaagent:target/meta-agent.jar=server,port=8080 -jar your-program.jar
+    ```
+    Key endpoints at `http://localhost:7071`:
+    - `/instrumentators` — list all ClassFileTransformers that were registered
+    - `/full-diff/instrumentator?pattern=.*` — decompiled bytecode diff per transformer
+    - `/classes` — list all classes that were transformed
+    - `/full-diff/class?pattern=.*` — full diff across all classes and transformers
+    - `/all/decompile?pattern=<pattern>` — decompile matching classes
+
+- title: Intercept or block transformer registrations with a callback
+  body: |
+    Implement `InstrumentationCallback` and pass it via the `cb` argument to observe or block
+    transformers. Note: `CallbackAction.IGNORE` suppresses the transformer (not `DENY`):
+    ```java
+    public class MyHandler implements InstrumentationCallback {
+        @Override
+        public CallbackAction onAddTransformer(ClassFileTransformer transformer) {
+            System.err.println("New transformer: " + transformer.getClass().getName());
+            return CallbackAction.ALLOW; // or IGNORE to suppress it
+        }
+
+        @Override
+        public void onExistingTransformer(ClassFileTransformer transformer) {
+            System.err.println("Existing transformer: " + transformer.getClass().getName());
+        }
+
+        @Override
+        public CallbackAction onInstrumentation(ClassFileTransformer transformer,
+                ClassArtifact before, ClassArtifact after) {
+            System.out.println("Instrumenting: " + before.klass().getName());
+            return CallbackAction.ALLOW;
+        }
+    }
+    ```
+    Pass the fully qualified class name via `cb`:
+    ```bash
+    java -javaagent:target/meta-agent.jar=server,cb=com.example.MyHandler -jar your-program.jar
+    ```
+
+- title: Capture native agents too
+  body: |
+    Build the native component first, then load both agents:
+    ```bash
+    cd native && make
+    # macOS:
+    java -agentpath:native/native_agent.dylib \
+         -javaagent:target/meta-agent.jar=server \
+         -jar your-program.jar
+    # Linux:
+    java -agentpath:native/native_agent.so \
+         -javaagent:target/meta-agent.jar=server \
+         -jar your-program.jar
+    ```
+
+- title: Add to Maven test runs
+  body: |
+    Use the Maven plugin to attach meta-agent automatically during `mvn test`:
+    ```xml
+    <plugin>
+      <groupId>me.bechberger</groupId>
+      <artifactId>meta-agent-maven-plugin</artifactId>
+      <version>VERSION</version>
+      <executions>
+        <execution>
+          <phase>validate</phase>
+          <goals><goal>meta-agent</goal></goals>
+        </execution>
+      </executions>
+      <configuration>
+        <server>true</server>
+        <callbackClasses>
+          <callbackClass>com.example.MyHandler</callbackClass>
+        </callbackClasses>
+      </configuration>
+    </plugin>
+    ```
+    Add the runtime dependency so your callback class can reference the API:
+    ```xml
+    <dependency>
+      <groupId>me.bechberger</groupId>
+      <artifactId>meta-agent</artifactId>
+      <version>VERSION</version>
+      <scope>test</scope>
+    </dependency>
+    ```
