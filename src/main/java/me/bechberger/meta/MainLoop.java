@@ -52,8 +52,21 @@ public class MainLoop {
             Thread thread =
                     new Thread(
                             () -> runServer(serverPort));
-            thread.setDaemon(!options.keepalive);
+            thread.setDaemon(true);
             thread.start();
+            if (options.keepalive) {
+                // Block JVM exit via a shutdown hook so the server stays reachable after the
+                // main program (e.g. Maven Surefire) finishes. The /stop endpoint or Ctrl+C exits.
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    System.out.println("[meta-agent] Tests done. Server still running on http://localhost:" + options.port);
+                    System.out.println("[meta-agent] Hit /stop in the browser or press Ctrl+C to exit.");
+                    try {
+                        Thread.currentThread().join(); // block indefinitely — /stop calls System.exit(0)
+                    } catch (InterruptedException e) {
+                        // Ctrl+C or external interrupt — exit normally
+                    }
+                }, "meta-agent-keepalive"));
+            }
         }
     }
 
