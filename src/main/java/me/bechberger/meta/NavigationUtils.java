@@ -28,6 +28,10 @@ public class NavigationUtils {
             "ALL_CLASSES_CLASS", currentPath.startsWith("/all/")
         );
 
+        String stopButton = MainLoop.keepalive
+            ? "<a href='/stop' class='stop-btn' title='Stop server and exit JVM'>Stop</a>"
+            : "";
+
         String template = """
             <nav class="nav-header">
                 <div class="nav-left">
@@ -43,6 +47,7 @@ public class NavigationUtils {
                     <span class="meta-info">
                         <a href="https://github.com/parttimenerd/meta-agent" title="GitHub Repository">GitHub</a>
                     </span>
+                    """ + stopButton + """
                 </div>
             </nav>
             """;

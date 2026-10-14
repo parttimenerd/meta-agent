@@ -6,7 +6,7 @@
 
     <groupId>me.bechberger</groupId>
     <artifactId>meta-agent</artifactId>
-    <version>0.0.4</version>
+    <version>0.0.10</version>
 
     <licenses>
         <license>
@@ -87,13 +87,6 @@
                             </arguments>
                         </configuration>
                     </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>1.5.0</version>
-                <executions>
                     <execution>
                         <id>copy-runtime-jar</id>
                         <phase>generate-sources</phase>
@@ -175,6 +168,11 @@
         </plugins>
     </build>
     <dependencies>
+        <dependency>
+            <groupId>me.bechberger.util</groupId>
+            <artifactId>femtocli</artifactId>
+            <version>0.4.4</version>
+        </dependency>
         <dependency>
             <groupId>org.javassist</groupId>
             <artifactId>javassist</artifactId>

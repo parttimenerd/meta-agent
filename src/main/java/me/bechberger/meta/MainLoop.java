@@ -38,9 +38,11 @@ public class MainLoop {
 
     private static Instrumentation inst;
     private static int serverPort = 7071; // Track server port for navigation
+    static boolean keepalive = false;
 
     static void run(Options options, Instrumentation inst) {
         serverPort = options.port;
+        keepalive = options.keepalive;
         inst.addTransformer(new ClassTransformer(options.callbackClasses), true);
         MainLoop.inst = inst;
         // transform all loaded classes
@@ -52,6 +54,19 @@ public class MainLoop {
                             () -> runServer(serverPort));
             thread.setDaemon(true);
             thread.start();
+            if (options.keepalive) {
+                // Block JVM exit via a shutdown hook so the server stays reachable after the
+                // main program (e.g. Maven Surefire) finishes. /stop calls Runtime.halt(0) to exit.
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    System.out.println("[meta-agent] Tests done. Server still running on http://localhost:" + options.port);
+                    System.out.println("[meta-agent] Hit /stop in the browser or press Ctrl+C to exit.");
+                    try {
+                        Thread.currentThread().join(Long.MAX_VALUE); // wait indefinitely
+                    } catch (InterruptedException e) {
+                        // Ctrl+C
+                    }
+                }, "meta-agent-keepalive"));
+            }
         }
     }
 
@@ -143,7 +158,12 @@ public class MainLoop {
                             "/all/decompile?pattern={pattern}",
                             MainLoop::decompileClasses,
                             "Decompile all classes matching the given glob pattern",
-                            "/all/decompile?pattern=java.util.stream.*"));
+                            "/all/decompile?pattern=java.util.stream.*"),
+                    new Command(
+                            "/stop",
+                            MainLoop::stopServer,
+                            "Stop the server and exit the JVM (only works with keepalive)",
+                            "/stop"));
 
     /**
      * Generate HTML header with navigation for a specific page
@@ -200,6 +220,23 @@ public class MainLoop {
     }
 
     private static final Map<String, String> suffixToMime = Map.of("css", "text/css", "js", "text/javascript");
+
+    private static Response stopServer(HttpExchange exchange) {
+        if (!keepalive) {
+            return new Response(getHTMLHeader(exchange) + "<p>Stop is only available when the server was started with <code>keepalive</code>.</p></div></body></html>", true);
+        }
+        // Halt the JVM after the response is sent. Runtime.halt() bypasses shutdown hooks,
+        // which is intentional — we don't want to re-enter the keepalive hook.
+        new Thread(() -> {
+            try {
+                Thread.sleep(300);
+                Runtime.getRuntime().halt(0);
+            } catch (Throwable t) {
+                t.printStackTrace(System.err);
+            }
+        }, "meta-agent-stop").start();
+        return new Response(getHTMLHeader(exchange) + "<p>Server stopping&hellip;</p></div></body></html>", true);
+    }
 
     @NotNull
     private static HttpHandler getFileHTTPHandler() {

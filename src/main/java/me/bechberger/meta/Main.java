@@ -1,5 +1,8 @@
 package me.bechberger.meta;
 
+import me.bechberger.femtocli.FemtoCli;
+import me.bechberger.femtocli.annotations.Command;
+import me.bechberger.femtocli.annotations.Option;
 import me.bechberger.meta.runtime.Options;
 
 import java.io.File;
@@ -9,59 +12,53 @@ import java.lang.instrument.Instrumentation;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.*;
-import java.util.function.BiConsumer;
+import java.util.HashSet;
+import java.util.List;
 import java.util.jar.JarFile;
+import java.util.concurrent.Callable;
 
 /**
- * Agent entry
+ * Agent entry point.
  */
 public class Main {
 
-    private static Instrumentation inst;
+    @Command(
+            name = "meta-agent",
+            description = "Bytecode instrumentation inspector — wraps ClassFileTransformers and serves live diffs.",
+            version = "0.0.10",
+            mixinStandardHelpOptions = true
+    )
+    static class AgentArgs implements Callable<Integer> {
 
-    record Option(String name, String description, boolean hasArgument, BiConsumer<Options, String> process) {
-    }
+        @Option(names = "server", description = "Start the HTTP server")
+        boolean server = false;
 
-    static final List<Option> OPTIONS = List.of(
-            new Option("help", "Show this help", false, (o, a) -> o.help = true),
-            new Option("server", "Start the server at the passed port (default 7071)", false, (o, a) -> o.server = true),
-            new Option("disable-native", "Don't check for files created by the native wrapper agent", false, (o, a) -> o._native = false),
-            new Option("port", "Port to start the server on, default 7071", true, (o, a) -> o.port = Integer.parseInt(a)),
-            new Option("cb", "Callback class names, classes have to implement the InstrumentationCallback interface", true, (o, a) -> {
-                o.callbackClasses.add(a);
-            }));
+        @Option(names = "port", description = "HTTP server port (default: ${DEFAULT-VALUE})", defaultValue = "7071")
+        int port = 7071;
 
-    private static String getHelp() {
-        StringBuilder builder = new StringBuilder("Usage: java -javaagent:meta-agent.jar[=options] -jar your.jar\n");
-        for (Option option : OPTIONS) {
-            builder.append("\n").append(option.name).append(": ").append(option.description);
+        @Option(names = "keepalive", description = "Keep the JVM alive after the program exits so the server stays reachable; implies server")
+        boolean keepalive = false;
+
+        @Option(names = "disable-native", description = "Don't check for files created by the native wrapper agent")
+        boolean disableNative = false;
+
+        @Option(names = "cb", description = "Callback class name (implements InstrumentationCallback); repeat for multiple")
+        List<String> callbackClasses = List.of();
+
+        @Override
+        public Integer call() {
+            return 0;
         }
-        return builder.toString();
-    }
 
-    private static Options parseOptionsFromArgs(String args) {
-        Options options = new Options();
-        if (args == null) {
-            return options;
+        Options toOptions() {
+            Options o = new Options();
+            o.server = server;
+            o.port = port;
+            o.keepalive = keepalive;
+            o._native = !disableNative;
+            o.callbackClasses = new HashSet<>(callbackClasses);
+            return o;
         }
-        String[] parts = args.split(",");
-        for (String part : parts) {
-            String[] keyValue = part.split("=");
-            String key = keyValue[0];
-            String value = keyValue.length > 1 ? keyValue[1] : null;
-            Option option = OPTIONS.stream().filter(o -> o.name.equals(key)).findFirst().orElse(null);
-            if (option == null) {
-                System.err.println("Unknown option: " + key);
-                continue;
-            }
-            if (option.hasArgument && value == null) {
-                System.err.println("Option " + key + " requires an argument\n" + getHelp());
-                continue;
-            }
-            option.process.accept(options, value);
-        }
-        return options;
     }
 
     public static void agentmain(String args, Instrumentation inst) {
@@ -69,27 +66,27 @@ public class Main {
     }
 
     public static void premain(String agentArgs, Instrumentation inst) {
-        if (agentArgs == null || agentArgs.isEmpty()) {
-            System.out.println(getHelp());
-            return;
-        }
         try {
             inst.appendToBootstrapClassLoaderSearch(new JarFile(getExtractedJARPath().toFile()));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        Main.inst = inst;
-        Options options = parseOptionsFromArgs(agentArgs);
-        if (options.help) {
-            System.out.println(getHelp());
-            return;
+
+        AgentArgs parsed = new AgentArgs();
+        int exitCode = FemtoCli.builder()
+                .alertOnMixedStyleInAgent(true)
+                .runAgent(parsed, agentArgs != null ? agentArgs : "");
+
+        if (exitCode != 0) {
+            return; // --help or --version was printed
         }
+
+        Options options = parsed.toOptions();
         if (options._native) {
             NativeWrapperLoop.startThread();
         }
         MainLoop.run(options, inst);
     }
-
 
     private static Path getExtractedJARPath() throws IOException {
         try (InputStream in = Main.class.getClassLoader().getResourceAsStream("meta-runtime.jar")) {
