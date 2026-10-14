@@ -21,7 +21,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -40,7 +39,6 @@ public class MainLoop {
     private static Instrumentation inst;
     private static int serverPort = 7071; // Track server port for navigation
     static boolean keepalive = false;
-    static final CountDownLatch stopLatch = new CountDownLatch(1);
 
     static void run(Options options, Instrumentation inst) {
         serverPort = options.port;
@@ -58,17 +56,16 @@ public class MainLoop {
             thread.start();
             if (options.keepalive) {
                 // Block JVM exit via a shutdown hook so the server stays reachable after the
-                // main program (e.g. Maven Surefire) finishes. The /stop endpoint or Ctrl+C exits.
-                Thread keepaliveHook = new Thread(() -> {
+                // main program (e.g. Maven Surefire) finishes. /stop calls Runtime.halt(0) to exit.
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                     System.out.println("[meta-agent] Tests done. Server still running on http://localhost:" + options.port);
                     System.out.println("[meta-agent] Hit /stop in the browser or press Ctrl+C to exit.");
                     try {
-                        stopLatch.await(); // block until /stop counts down the latch
+                        Thread.currentThread().join(Long.MAX_VALUE); // wait indefinitely
                     } catch (InterruptedException e) {
-                        // Ctrl+C — exit normally
+                        // Ctrl+C
                     }
-                }, "meta-agent-keepalive");
-                Runtime.getRuntime().addShutdownHook(keepaliveHook);
+                }, "meta-agent-keepalive"));
             }
         }
     }
@@ -228,7 +225,16 @@ public class MainLoop {
         if (!keepalive) {
             return new Response(getHTMLHeader(exchange) + "<p>Stop is only available when the server was started with <code>keepalive</code>.</p></div></body></html>", true);
         }
-        stopLatch.countDown(); // unblock the keepalive shutdown hook so the JVM can exit
+        // Halt the JVM after the response is sent. Runtime.halt() bypasses shutdown hooks,
+        // which is intentional — we don't want to re-enter the keepalive hook.
+        new Thread(() -> {
+            try {
+                Thread.sleep(300);
+                Runtime.getRuntime().halt(0);
+            } catch (Throwable t) {
+                t.printStackTrace(System.err);
+            }
+        }, "meta-agent-stop").start();
         return new Response(getHTMLHeader(exchange) + "<p>Server stopping&hellip;</p></div></body></html>", true);
     }
 
