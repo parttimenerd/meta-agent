@@ -38,9 +38,11 @@ public class MainLoop {
 
     private static Instrumentation inst;
     private static int serverPort = 7071; // Track server port for navigation
+    static boolean keepalive = false;
 
     static void run(Options options, Instrumentation inst) {
         serverPort = options.port;
+        keepalive = options.keepalive;
         inst.addTransformer(new ClassTransformer(options.callbackClasses), true);
         MainLoop.inst = inst;
         // transform all loaded classes
@@ -143,7 +145,12 @@ public class MainLoop {
                             "/all/decompile?pattern={pattern}",
                             MainLoop::decompileClasses,
                             "Decompile all classes matching the given glob pattern",
-                            "/all/decompile?pattern=java.util.stream.*"));
+                            "/all/decompile?pattern=java.util.stream.*"),
+                    new Command(
+                            "/stop",
+                            MainLoop::stopServer,
+                            "Stop the server and exit the JVM (only works with keepalive)",
+                            "/stop"));
 
     /**
      * Generate HTML header with navigation for a specific page
@@ -200,6 +207,18 @@ public class MainLoop {
     }
 
     private static final Map<String, String> suffixToMime = Map.of("css", "text/css", "js", "text/javascript");
+
+    private static Response stopServer(HttpExchange exchange) {
+        if (!keepalive) {
+            return new Response(getHTMLHeader(exchange) + "<p>Stop is only available when the server was started with <code>keepalive</code>.</p></div></body></html>", true);
+        }
+        // Schedule exit after response is sent
+        new Thread(() -> {
+            try { Thread.sleep(200); } catch (InterruptedException e) {}
+            System.exit(0);
+        }).start();
+        return new Response(getHTMLHeader(exchange) + "<p>Server stopping&hellip;</p></div></body></html>", true);
+    }
 
     @NotNull
     private static HttpHandler getFileHTTPHandler() {

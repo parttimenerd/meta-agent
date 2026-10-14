@@ -100,6 +100,23 @@ body {
   border-color: rgba(255,255,255,0.6);
 }
 
+.nav-header .stop-btn {
+  color: white;
+  text-decoration: none;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgba(255, 100, 100, 0.6);
+  border-radius: 6px;
+  background: rgba(180, 40, 40, 0.5);
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.nav-header .stop-btn:hover {
+  background: rgba(220, 50, 50, 0.8);
+  border-color: rgba(255, 120, 120, 0.9);
+}
+
 /* Breadcrumbs */
 .breadcrumbs {
   background: white;
