@@ -50,7 +50,7 @@ public class MainLoop {
             Thread thread =
                     new Thread(
                             () -> runServer(serverPort));
-            thread.setDaemon(true);
+            thread.setDaemon(!options.keepalive);
             thread.start();
         }
     }

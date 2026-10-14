@@ -8,5 +8,6 @@ public class Options {
     public boolean _native = true;
     public int port = 7071;
     public boolean help = false;
+    public boolean keepalive = false;
     public Set<String> callbackClasses = new HashSet<>();
 }

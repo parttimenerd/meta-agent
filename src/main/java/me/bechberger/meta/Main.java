@@ -26,6 +26,7 @@ public class Main {
     static final List<Option> OPTIONS = List.of(
             new Option("help", "Show this help", false, (o, a) -> o.help = true),
             new Option("server", "Start the server at the passed port (default 7071)", false, (o, a) -> o.server = true),
+            new Option("keepalive", "Keep the JVM alive after the program exits so the server stays reachable (implies server)", false, (o, a) -> { o.server = true; o.keepalive = true; }),
             new Option("disable-native", "Don't check for files created by the native wrapper agent", false, (o, a) -> o._native = false),
             new Option("port", "Port to start the server on, default 7071", true, (o, a) -> o.port = Integer.parseInt(a)),
             new Option("cb", "Callback class names, classes have to implement the InstrumentationCallback interface", true, (o, a) -> {
