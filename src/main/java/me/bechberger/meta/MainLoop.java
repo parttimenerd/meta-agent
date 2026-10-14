@@ -39,6 +39,7 @@ public class MainLoop {
     private static Instrumentation inst;
     private static int serverPort = 7071; // Track server port for navigation
     static boolean keepalive = false;
+    static volatile Thread keepaliveHookThread = null;
 
     static void run(Options options, Instrumentation inst) {
         serverPort = options.port;
@@ -57,15 +58,17 @@ public class MainLoop {
             if (options.keepalive) {
                 // Block JVM exit via a shutdown hook so the server stays reachable after the
                 // main program (e.g. Maven Surefire) finishes. The /stop endpoint or Ctrl+C exits.
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                Thread keepaliveHook = new Thread(() -> {
                     System.out.println("[meta-agent] Tests done. Server still running on http://localhost:" + options.port);
                     System.out.println("[meta-agent] Hit /stop in the browser or press Ctrl+C to exit.");
                     try {
-                        Thread.currentThread().join(); // block indefinitely — /stop calls System.exit(0)
+                        Thread.currentThread().join(); // block indefinitely — /stop interrupts this thread
                     } catch (InterruptedException e) {
-                        // Ctrl+C or external interrupt — exit normally
+                        // Interrupted by /stop or Ctrl+C — exit normally
                     }
-                }, "meta-agent-keepalive"));
+                }, "meta-agent-keepalive");
+                keepaliveHookThread = keepaliveHook;
+                Runtime.getRuntime().addShutdownHook(keepaliveHook);
             }
         }
     }
@@ -225,11 +228,11 @@ public class MainLoop {
         if (!keepalive) {
             return new Response(getHTMLHeader(exchange) + "<p>Stop is only available when the server was started with <code>keepalive</code>.</p></div></body></html>", true);
         }
-        // Schedule exit after response is sent
-        new Thread(() -> {
-            try { Thread.sleep(200); } catch (InterruptedException e) {}
-            System.exit(0);
-        }).start();
+        // Interrupt the keepalive shutdown hook thread — that unblocks its join() and lets the JVM exit.
+        Thread hook = keepaliveHookThread;
+        if (hook != null) {
+            hook.interrupt();
+        }
         return new Response(getHTMLHeader(exchange) + "<p>Server stopping&hellip;</p></div></body></html>", true);
     }
 
