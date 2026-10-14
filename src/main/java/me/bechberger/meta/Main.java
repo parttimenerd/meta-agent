@@ -30,19 +30,19 @@ public class Main {
     )
     static class AgentArgs implements Callable<Integer> {
 
-        @Option(names = "server", description = "Start the HTTP server")
+        @Option(names = "--server", description = "Start the HTTP server")
         boolean server = false;
 
-        @Option(names = "port", description = "HTTP server port (default: ${DEFAULT-VALUE})", defaultValue = "7071")
+        @Option(names = "--port", description = "HTTP server port (default: ${DEFAULT-VALUE})", defaultValue = "7071")
         int port = 7071;
 
-        @Option(names = "keepalive", description = "Keep the JVM alive after the program exits so the server stays reachable; implies server")
+        @Option(names = "--keepalive", description = "Keep the JVM alive after the program exits so the server stays reachable; implies server")
         boolean keepalive = false;
 
-        @Option(names = "disable-native", description = "Don't check for files created by the native wrapper agent")
+        @Option(names = "--disable-native", description = "Don't check for files created by the native wrapper agent")
         boolean disableNative = false;
 
-        @Option(names = "cb", description = "Callback class name (implements InstrumentationCallback); repeat for multiple")
+        @Option(names = "--cb", description = "Callback class name (implements InstrumentationCallback); repeat for multiple")
         List<String> callbackClasses = List.of();
 
         @Override
